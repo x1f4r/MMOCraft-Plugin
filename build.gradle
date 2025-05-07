@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    id("xyz.jpenilla.run-paper") version "2.3.1" // For local testing with Paper
+}
+
+group = 'io.github.x1f4r'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+    maven {
+        name = "sonatype" // For Snapshots if needed by dependencies
+        url = "https://oss.sonatype.org/content/groups/public/"
+    }
+}
+
+dependencies {
+    // Paper API includes Bukkit and Spigot APIs.
+    // This version is for Minecraft 1.20.1.
+    compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
+}
+
+tasks {
+    runServer {
+        // Configure the Minecraft version for the local test server.
+        // Your plugin.yml has api-version: '1.20'.
+        // If you want to test specifically against 1.20.1 (matching your Paper API compile version),
+        // you can change this to "1.20.1". Otherwise, "1.20" is fine.
+        minecraftVersion("1.20")
+    }
+}
+
+// Configure Java version
+def targetJavaVersion = 17 // Java 17 is required for Minecraft 1.20+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8' // Ensure consistent encoding
+
+    // Set the release flag for Java 10+ to ensure correct module handling if applicable
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+// Process plugin.yml to replace placeholders like ${version}
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}

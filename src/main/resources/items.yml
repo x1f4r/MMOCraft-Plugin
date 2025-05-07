@@ -1,0 +1,151 @@
+# Definitions for all custom items
+items:
+  # --- Tree Items ---
+  tree_sword:
+    material: WOODEN_SWORD
+    name: "&aTree Sword"
+    lore:
+      - "&7A blade forged from the"
+      - "&7very essence of the forest."
+      - ""
+      - "&7Strength: &c+5"
+      - "&7Crit Damage: &c+10%"
+    unbreakable: true
+    attributes:
+      GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND # Base Minecraft damage. Strength stat is separate.
+    custom_stats:
+      STRENGTH: 5
+      CRIT_DAMAGE: 10 # Additional percent
+
+  tree_pickaxe:
+    material: WOODEN_PICKAXE
+    name: "&aTree Pickaxe"
+    lore: ["&7Surprisingly sturdy."]
+    unbreakable: true
+    enchants: { DIG_SPEED: 3 } # Efficiency III
+    item_flags: [ HIDE_ENCHANTS, HIDE_UNBREAKABLE, HIDE_ATTRIBUTES ]
+    attributes: { GENERIC_ATTACK_DAMAGE: 2.0:ADD_NUMBER:HAND } # Small damage
+    custom_stats:
+      STRENGTH: 2
+
+  tree_axe:
+    material: WOODEN_AXE
+    name: "&aTree Axe"
+    lore: ["&7Feels weighty."]
+    unbreakable: true
+    enchants: { DIG_SPEED: 3 }
+    item_flags: [ HIDE_ENCHANTS, HIDE_UNBREAKABLE, HIDE_ATTRIBUTES ]
+    attributes: { GENERIC_ATTACK_DAMAGE: 5.0:ADD_NUMBER:HAND }
+    custom_stats:
+      STRENGTH: 8
+      CRIT_CHANCE: 2
+
+  # ... (Add custom_stats sections to other tree tools/armor as desired) ...
+
+  tree_helmet:
+    material: LEATHER_HELMET # Could be CARVED_PUMPKIN or other wood-like if you prefer
+    name: "&aTree Helmet"
+    lore: ["&7Surprisingly protective bark."]
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 2.0:ADD_NUMBER:HEAD
+    custom_stats:
+      MAX_MANA: 10 # For custom_stats, use MAX_MANA for armor, MANA_COST for abilities
+      # Renamed MANA to MAX_MANA for clarity on armor
+      # PlayerStatsManager will look for MANA_KEY, so items.yml should provide values for it.
+      # ItemManager parses `MANA`, `MANA_COST`, `MAX_MANA` all into `NBTKeys.MANA_KEY`.
+      # PlayerStatsManager when accumulating adds this to MaxMana.
+      # PlayerAbilityListener when consuming reads this NBTKeys.MANA_KEY as a cost.
+      # So, using MAX_MANA here for clarity in YML, but it maps to the same NBTKey.
+
+  tree_chestplate:
+    material: LEATHER_CHESTPLATE
+    name: "&aTree Chestplate"
+    lore: ["&7Heartwood protection."]
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 5.0:ADD_NUMBER:CHEST
+    custom_stats:
+      MAX_MANA: 20
+      STRENGTH: 1
+
+  tree_leggings:
+    material: LEATHER_LEGGINGS
+    name: "&aTree Leggings"
+    lore: ["&7Sturdy root bindings."]
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 4.0:ADD_NUMBER:LEGS
+    custom_stats:
+      MAX_MANA: 15
+
+  tree_boots:
+    material: LEATHER_BOOTS
+    name: "&aTree Boots"
+    lore: ["&7Grounded footing."]
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 1.0:ADD_NUMBER:FEET
+    custom_stats:
+      MAX_MANA: 5
+      SPEED: 2 # +2% speed
+
+  # --- Dragon Items ---
+  aspect_of_the_dragons: # AOTD
+    material: NETHERITE_SWORD
+    name: "&cAspect of the Dragons"
+    lore:
+      - "&7The combined essence of powerful dragons."
+      - "&7Emits a strong aura."
+      - ""
+      - "&6Ability: Dragon's Fury &e&lRIGHT CLICK"
+      - "&7Unleash a wave of draconic energy."
+      - ""
+      - "&cStrength: &f+50"
+      - "&cCrit Damage: &f+75%"
+      - "&aSpeed: &f+5%"
+      - ""
+      - "&bMana Cost: &3100"
+    unbreakable: true
+    enchants:
+      DAMAGE_ALL: 5 # Sharpness V
+      LOOT_BONUS_MOBS: 3 # Looting III
+    item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND # Base damage for Netherite Sword is 8. +10 = 18. Strength adds more.
+    custom_stats:
+      STRENGTH: 50
+      CRIT_DAMAGE: 75 # Additional crit damage percent
+      SPEED: 5        # +5% speed
+      MANA: 100       # Interpreted as MANA_COST by PlayerAbilityListener for this weapon
+
+  aspect_of_the_end: # AOTE - NEW
+    material: DIAMOND_SWORD
+    name: "&5Aspect of the End"
+    lore:
+      - "&7A powerful blade that allows you to"
+      - "&7instantly teleport short distances."
+      - ""
+      - "&6Ability: Instant Transmission &e&lRIGHT CLICK"
+      - "&7Teleport &a8 blocks &7ahead of you."
+      - "&7Also deals damage when striking."
+      - ""
+      - "&cStrength: &f+25"
+      - "&cCrit Chance: &f+10%"
+      - ""
+      - "&bMana Cost: &350"
+    unbreakable: true
+    enchants:
+      DAMAGE_ALL: 3 # Sharpness III
+    item_flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+    attributes:
+      GENERIC_ATTACK_DAMAGE: 6.0:ADD_NUMBER:HAND # Diamond sword base is 7. +6 = 13 total before strength.
+    custom_stats:
+      STRENGTH: 25
+      CRIT_CHANCE: 10
+      CRIT_DAMAGE: 25 # Additional crit damage percent
+      MANA: 50        # Interpreted as MANA_COST by PlayerAbilityListener for this weapon
