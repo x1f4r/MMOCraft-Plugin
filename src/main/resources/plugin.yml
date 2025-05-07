@@ -1,5 +1,5 @@
 name: mmocraft
-version: '1.0-SNAPSHOT' # Enclose version in quotes if it contains non-numeric, though SNAPSHOT is usually fine
+version: '1.0-SNAPSHOT'
 main: io.github.x1f4r.mmocraft.MMOCraft
 api-version: '1.20'
 authors: [x1f4r]
@@ -9,7 +9,7 @@ commands:
   customcraft:
     description: Opens the custom MMO crafting GUI.
     usage: /<command>
-    aliases: [mcraft, mmoc] # Aliases seen in your screenshot
+    aliases: [mcraft, mmoc]
 
   summonelderdragon:
     description: Summons a powerful Elder Dragon.
@@ -17,19 +17,26 @@ commands:
     permission: mmocraft.command.summon.elderdragon
     permission-message: You do not have permission to summon the Elder Dragon.
 
-  givecustomitem: # This is the command name the server will recognize
+  givecustomitem:
     description: Gives a custom item from MMOCraft.
     usage: /<command> <item_id> [amount] [player]
-    aliases: [mmogive, mcgive] # These are alternative ways to type the command
+    aliases: [mmogive, mcgive]
     permission: mmocraft.command.givecustomitem
     permission-message: You do not have permission to use this command.
 
   stats:
     description: Displays your current MMOCraft stats.
     usage: /<command>
-    aliases: [mystats, mmostats] # Aliases seen in your screenshot
+    aliases: [mystats, mmostats]
     permission: mmocraft.command.stats
     permission-message: You do not have permission to view your stats.
+
+  reloadmobs: # New Command
+    description: Reloads the mobs.yml configuration.
+    usage: /<command>
+    permission: mmocraft.command.reloadmobs # Define this permission
+    permission-message: You do not have permission to use this command.
+
 
 permissions:
   mmocraft.command.craft:
@@ -44,3 +51,6 @@ permissions:
   mmocraft.command.stats:
     description: Allows players to view their own MMOCraft stats.
     default: true
+  mmocraft.command.reloadmobs: # New Permission
+    description: Allows usage of the /reloadmobs command.
+    default: op

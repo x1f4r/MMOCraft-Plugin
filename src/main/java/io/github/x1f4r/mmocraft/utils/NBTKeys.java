@@ -19,6 +19,11 @@ public final class NBTKeys {
     public static NamespacedKey CRIT_DAMAGE_KEY;
     public static NamespacedKey MANA_KEY;       // Can represent max_mana on armor or mana_cost on items
     public static NamespacedKey SPEED_KEY;
+    public static NamespacedKey DEFENSE_KEY; // New Custom Defense Stat Key
+
+    // Damage Flags
+    public static NamespacedKey TRUE_DAMAGE_FLAG_KEY; // For marking sources that deal true damage
+
 
     public static void init(MMOCraft pluginInstance) {
         if (NBTKeys.plugin != null) { // Ensure it's initialized only once
@@ -35,6 +40,9 @@ public final class NBTKeys {
         CRIT_DAMAGE_KEY = new NamespacedKey(plugin, "mmo_crit_damage");
         MANA_KEY = new NamespacedKey(plugin, "mmo_mana_stat"); // General mana key
         SPEED_KEY = new NamespacedKey(plugin, "mmo_speed");
+        DEFENSE_KEY = new NamespacedKey(plugin, "mmo_defense"); // Initialize new key
+
+        TRUE_DAMAGE_FLAG_KEY = new NamespacedKey(plugin, "mmo_true_damage_flag");
     }
 
     private NBTKeys() {

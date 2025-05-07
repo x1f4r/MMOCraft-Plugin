@@ -12,19 +12,19 @@ items:
       - "&7Crit Damage: &c+10%"
     unbreakable: true
     attributes:
-      GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND # Base Minecraft damage. Strength stat is separate.
+      GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND
     custom_stats:
       STRENGTH: 5
-      CRIT_DAMAGE: 10 # Additional percent
+      CRIT_DAMAGE: 10
 
   tree_pickaxe:
     material: WOODEN_PICKAXE
     name: "&aTree Pickaxe"
     lore: ["&7Surprisingly sturdy."]
     unbreakable: true
-    enchants: { DIG_SPEED: 3 } # Efficiency III
+    enchants: { DIG_SPEED: 3 }
     item_flags: [ HIDE_ENCHANTS, HIDE_UNBREAKABLE, HIDE_ATTRIBUTES ]
-    attributes: { GENERIC_ATTACK_DAMAGE: 2.0:ADD_NUMBER:HAND } # Small damage
+    attributes: { GENERIC_ATTACK_DAMAGE: 2.0:ADD_NUMBER:HAND }
     custom_stats:
       STRENGTH: 2
 
@@ -40,10 +40,8 @@ items:
       STRENGTH: 8
       CRIT_CHANCE: 2
 
-  # ... (Add custom_stats sections to other tree tools/armor as desired) ...
-
   tree_helmet:
-    material: LEATHER_HELMET # Could be CARVED_PUMPKIN or other wood-like if you prefer
+    material: LEATHER_HELMET
     name: "&aTree Helmet"
     lore: ["&7Surprisingly protective bark."]
     unbreakable: true
@@ -51,13 +49,8 @@ items:
     attributes:
       GENERIC_ARMOR: 2.0:ADD_NUMBER:HEAD
     custom_stats:
-      MAX_MANA: 10 # For custom_stats, use MAX_MANA for armor, MANA_COST for abilities
-      # Renamed MANA to MAX_MANA for clarity on armor
-      # PlayerStatsManager will look for MANA_KEY, so items.yml should provide values for it.
-      # ItemManager parses `MANA`, `MANA_COST`, `MAX_MANA` all into `NBTKeys.MANA_KEY`.
-      # PlayerStatsManager when accumulating adds this to MaxMana.
-      # PlayerAbilityListener when consuming reads this NBTKeys.MANA_KEY as a cost.
-      # So, using MAX_MANA here for clarity in YML, but it maps to the same NBTKey.
+      MAX_MANA: 10
+      DEFENSE: 5
 
   tree_chestplate:
     material: LEATHER_CHESTPLATE
@@ -70,6 +63,7 @@ items:
     custom_stats:
       MAX_MANA: 20
       STRENGTH: 1
+      DEFENSE: 15
 
   tree_leggings:
     material: LEATHER_LEGGINGS
@@ -81,6 +75,7 @@ items:
       GENERIC_ARMOR: 4.0:ADD_NUMBER:LEGS
     custom_stats:
       MAX_MANA: 15
+      DEFENSE: 10
 
   tree_boots:
     material: LEATHER_BOOTS
@@ -92,10 +87,11 @@ items:
       GENERIC_ARMOR: 1.0:ADD_NUMBER:FEET
     custom_stats:
       MAX_MANA: 5
-      SPEED: 2 # +2% speed
+      SPEED: 2
+      DEFENSE: 5
 
   # --- Dragon Items ---
-  aspect_of_the_dragons: # AOTD
+  aspect_of_the_dragons:
     material: NETHERITE_SWORD
     name: "&cAspect of the Dragons"
     lore:
@@ -112,18 +108,18 @@ items:
       - "&bMana Cost: &3100"
     unbreakable: true
     enchants:
-      DAMAGE_ALL: 5 # Sharpness V
-      LOOT_BONUS_MOBS: 3 # Looting III
+      DAMAGE_ALL: 5
+      LOOT_BONUS_MOBS: 3
     item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes:
-      GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND # Base damage for Netherite Sword is 8. +10 = 18. Strength adds more.
+      GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND
     custom_stats:
       STRENGTH: 50
-      CRIT_DAMAGE: 75 # Additional crit damage percent
-      SPEED: 5        # +5% speed
-      MANA: 100       # Interpreted as MANA_COST by PlayerAbilityListener for this weapon
+      CRIT_DAMAGE: 75
+      SPEED: 5
+      MANA: 100
 
-  aspect_of_the_end: # AOTE - NEW
+  aspect_of_the_end:
     material: DIAMOND_SWORD
     name: "&5Aspect of the End"
     lore:
@@ -140,12 +136,93 @@ items:
       - "&bMana Cost: &350"
     unbreakable: true
     enchants:
-      DAMAGE_ALL: 3 # Sharpness III
+      DAMAGE_ALL: 3
     item_flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
     attributes:
-      GENERIC_ATTACK_DAMAGE: 6.0:ADD_NUMBER:HAND # Diamond sword base is 7. +6 = 13 total before strength.
+      GENERIC_ATTACK_DAMAGE: 6.0:ADD_NUMBER:HAND
     custom_stats:
       STRENGTH: 25
       CRIT_CHANCE: 10
-      CRIT_DAMAGE: 25 # Additional crit damage percent
-      MANA: 50        # Interpreted as MANA_COST by PlayerAbilityListener for this weapon
+      CRIT_DAMAGE: 25
+      MANA: 50
+
+  # --- End Armor Set ---
+  ender_helmet:
+    material: DIAMOND_HELMET
+    name: "&5Ender Helmet"
+    lore:
+      - "&7Health: &a+20"
+      - "&7Defense: &a+35"
+      - ""
+      - "&6Ability: End Amplification"
+      - "&7All stats on this armor piece are"
+      - "&7multiplied by &c2x &7while on"
+      - "&7the End Island!"
+      - ""
+      - "&5&lEPIC HELMET"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_MAX_HEALTH: 20.0:ADD_NUMBER:HEAD
+    custom_stats:
+      DEFENSE: 35
+
+  ender_chestplate:
+    material: DIAMOND_CHESTPLATE
+    name: "&5Ender Chestplate"
+    lore:
+      - "&7Health: &a+30"
+      - "&7Defense: &a+60"
+      - ""
+      - "&6Ability: End Amplification"
+      - "&7All stats on this armor piece are"
+      - "&7multiplied by &c2x &7while on"
+      - "&7the End Island!"
+      - ""
+      - "&5&lEPIC CHESTPLATE"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_MAX_HEALTH: 30.0:ADD_NUMBER:CHEST
+    custom_stats:
+      DEFENSE: 60
+
+  ender_leggings:
+    material: DIAMOND_LEGGINGS
+    name: "&5Ender Leggings"
+    lore:
+      - "&7Health: &a+25"
+      - "&7Defense: &a+50"
+      - ""
+      - "&6Ability: End Amplification"
+      - "&7All stats on this armor piece are"
+      - "&7multiplied by &c2x &7while on"
+      - "&7the End Island!"
+      - ""
+      - "&5&lEPIC LEGGINGS"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_MAX_HEALTH: 25.0:ADD_NUMBER:LEGS
+    custom_stats:
+      DEFENSE: 50
+
+  ender_boots:
+    material: DIAMOND_BOOTS
+    name: "&5Ender Boots"
+    lore:
+      - "&7Health: &a+15"
+      - "&7Defense: &a+25"
+      - ""
+      - "&6Ability: End Amplification"
+      - "&7All stats on this armor piece are"
+      - "&7multiplied by &c2x &7while on"
+      - "&7the End Island!"
+      - ""
+      - "&5&lEPIC BOOTS"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_MAX_HEALTH: 15.0:ADD_NUMBER:FEET
+    custom_stats:
+      DEFENSE: 25

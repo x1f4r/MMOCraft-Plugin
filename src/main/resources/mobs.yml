@@ -1,0 +1,39 @@
+# Configuration for custom mob stats
+# EntityType names can be found here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/entity/EntityType.html
+mobs:
+  ZOMBIE:
+    maxHealth: 150.0 # Vanilla is 20
+    defense: 10      # Custom defense stat (0-infinity)
+    strength: 5      # Additive damage bonus
+    speed: -10       # Percentage speed modifier (e.g., -10 makes it 10% slower, 10 makes it 10% faster)
+    maxMana: 0       # If mobs use mana
+    critChance: 0    # 0-100
+    critDamage: 0    # Bonus crit damage %
+  SKELETON:
+    maxHealth: 100.0
+    defense: 5
+    strength: 3 # Strength is added to their base arrow/melee damage
+    speed: 0
+    critChance: 5
+    critDamage: 50 # Skeletons can crit!
+  CREEPER:
+    maxHealth: 80.0
+    defense: 0
+    strength: 0 # Explosion damage is handled separately by vanilla, strength here might apply to a melee if it had one
+    speed: 0
+  ENDERMAN:
+    maxHealth: 250.0
+    defense: 20
+    strength: 15
+    speed: 5
+  # Example for your custom Elder Dragon (which is an ENDER_DRAGON entity type)
+  # The SummonElderDragonCommand could apply these or even more specific stats.
+  # This provides a baseline if any ENDER_DRAGON spawns naturally and gets caught by EntitySpawnListener.
+  ENDER_DRAGON:
+    maxHealth: 3000.0 # Default for your summoned ones might be higher
+    defense: 100
+    strength: 35 # For its melee/contact attacks
+    speed: 10
+    maxMana: 500 # If AI abilities consume mana
+    critChance: 10
+    critDamage: 75

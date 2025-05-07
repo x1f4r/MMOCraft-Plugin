@@ -1,24 +1,22 @@
 package io.github.x1f4r.mmocraft;
 
-import io.github.x1f4r.mmocraft.commands.CustomCraftCommand;
-import io.github.x1f4r.mmocraft.commands.GiveCustomItemCommand;
-import io.github.x1f4r.mmocraft.commands.PlayerStatsCommand;
-import io.github.x1f4r.mmocraft.commands.SummonElderDragonCommand;
+import io.github.x1f4r.mmocraft.commands.*;
 import io.github.x1f4r.mmocraft.crafting.CraftingGUIListener;
 import io.github.x1f4r.mmocraft.crafting.RecipeManager;
 import io.github.x1f4r.mmocraft.items.ArmorSetListener;
 import io.github.x1f4r.mmocraft.items.ItemManager;
 import io.github.x1f4r.mmocraft.items.PlayerAbilityListener;
+import io.github.x1f4r.mmocraft.listeners.EntitySpawnListener; // New listener
 import io.github.x1f4r.mmocraft.mobs.MobDropListener;
 import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
 import io.github.x1f4r.mmocraft.player.listeners.PlayerDamageListener;
 import io.github.x1f4r.mmocraft.player.listeners.PlayerEquipmentListener;
+import io.github.x1f4r.mmocraft.stats.EntityStatsManager;    // New manager
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-// No need for Objects import if we use direct null checks for PluginCommand
 import java.util.logging.Level;
 
 public final class MMOCraft extends JavaPlugin {
@@ -27,6 +25,7 @@ public final class MMOCraft extends JavaPlugin {
     private RecipeManager recipeManager;
     private ItemManager itemManager;
     private PlayerStatsManager playerStatsManager;
+    private EntityStatsManager entityStatsManager; // New Manager
 
     @Override
     public void onEnable() {
@@ -39,22 +38,27 @@ public final class MMOCraft extends JavaPlugin {
                 getLogger().severe("Could not create plugin data folder! This may cause issues.");
             }
         }
+        saveDefaultConfig(); // Ensure config.yml is there (if you use it)
+        saveResource("mobs.yml", false); // Save default mobs.yml if not present
+
 
         // Initialize Managers
         this.itemManager = new ItemManager(this);
         this.recipeManager = new RecipeManager(this);
         this.playerStatsManager = new PlayerStatsManager(this);
+        this.entityStatsManager = new EntityStatsManager(this); // Initialize new manager
 
         // Initialize and register Listeners
-        this.craftingGUIListener = new CraftingGUIListener(this); // Also used by a command
+        this.craftingGUIListener = new CraftingGUIListener(this);
 
         PluginManager pm = getServer().getPluginManager();
         pm.registerEvents(this.craftingGUIListener, this);
         pm.registerEvents(new MobDropListener(this), this);
         pm.registerEvents(new ArmorSetListener(this), this);
         pm.registerEvents(new PlayerAbilityListener(this), this);
-        pm.registerEvents(new PlayerDamageListener(this), this);
+        pm.registerEvents(new PlayerDamageListener(this), this); // This now handles more generic damage
         pm.registerEvents(new PlayerEquipmentListener(this), this);
+        pm.registerEvents(new EntitySpawnListener(this), this); // Register new listener
 
         // Initialize and register Command(s)
         registerCommands();
@@ -64,52 +68,42 @@ public final class MMOCraft extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
         getLogger().info("MMOCraft Plugin has been disabled!");
     }
 
     private void registerCommands() {
-        // CustomCraft Command
         PluginCommand customCraftPluginCommand = this.getCommand("customcraft");
         if (customCraftPluginCommand != null) {
             customCraftPluginCommand.setExecutor(new CustomCraftCommand(this.craftingGUIListener));
-            // If CustomCraftCommand needs tab completion, set it: customCraftPluginCommand.setTabCompleter(...);
-        } else {
-            getLogger().warning("Command 'customcraft' not found in plugin.yml or failed to load! Please check plugin.yml.");
-        }
+        } else { getLogger().log(Level.WARNING, "Command 'customcraft' not found in plugin.yml!");}
 
-        // SummonElderDragon Command
         PluginCommand summonElderDragonPluginCommand = this.getCommand("summonelderdragon");
         if (summonElderDragonPluginCommand != null) {
             summonElderDragonPluginCommand.setExecutor(new SummonElderDragonCommand(this));
-        } else {
-            getLogger().warning("Command 'summonelderdragon' not found in plugin.yml or failed to load! Please check plugin.yml.");
-        }
+        } else { getLogger().log(Level.WARNING, "Command 'summonelderdragon' not found in plugin.yml!");}
 
-        // GiveCustomItem Command
         PluginCommand giveCustomItemPluginCommand = this.getCommand("givecustomitem");
         if (giveCustomItemPluginCommand != null) {
             GiveCustomItemCommand giveCmdExecutor = new GiveCustomItemCommand(this);
             giveCustomItemPluginCommand.setExecutor(giveCmdExecutor);
-            giveCustomItemPluginCommand.setTabCompleter(giveCmdExecutor); // Set the TabCompleter
-        } else {
-            getLogger().warning("Command 'givecustomitem' NOT FOUND in plugin.yml or failed to load! Please check plugin.yml carefully for spelling and structure.");
-        }
+            giveCustomItemPluginCommand.setTabCompleter(giveCmdExecutor);
+        } else { getLogger().log(Level.WARNING, "Command 'givecustomitem' NOT FOUND in plugin.yml!");}
 
-        // PlayerStats Command
         PluginCommand playerStatsPluginCommand = this.getCommand("stats");
         if (playerStatsPluginCommand != null) {
             playerStatsPluginCommand.setExecutor(new PlayerStatsCommand(this));
-            // PlayerStatsCommand does not currently implement TabCompleter
-        } else {
-            getLogger().warning("Command 'stats' not found in plugin.yml or failed to load! Please check plugin.yml.");
-        }
+        } else { getLogger().log(Level.WARNING, "Command 'stats' not found in plugin.yml!");}
+
+        PluginCommand reloadMobsConfigCmd = this.getCommand("reloadmobs");
+        if (reloadMobsConfigCmd != null) {
+            reloadMobsConfigCmd.setExecutor(new ReloadMobsConfigCommand(this)); // Assumes ReloadMobsConfigCommand exists
+        } else { getLogger().log(Level.WARNING, "Command 'reloadmobs' not found in plugin.yml (Optional: for reloading mobs.yml).");}
     }
 
     // Getters for Managers
     public RecipeManager getRecipeManager() { return recipeManager; }
     public ItemManager getItemManager() { return itemManager; }
     public PlayerStatsManager getPlayerStatsManager() { return playerStatsManager; }
-    // Getter for Crafting GUI Listener (still needed by CustomCraftCommand)
+    public EntityStatsManager getEntityStatsManager() { return entityStatsManager; } // Getter for new manager
     public CraftingGUIListener getCraftingGUIListener() { return craftingGUIListener; }
 }
