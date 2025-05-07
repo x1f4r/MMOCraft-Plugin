@@ -21,7 +21,8 @@ public class PlayerStats {
         this.critDamage = critDamage;
         this.defense = Math.max(0, defense); // Ensure non-negative
         this.maxMana = Math.max(1, maxMana); // Max mana should be at least 1
-        this.currentMana = Math.max(0, Math.min(this.maxMana, currentMana)); // Clamp
+        // currentMana will be clamped against the initial maxMana here, which is fine for instantiation.
+        this.currentMana = Math.max(0, Math.min(this.maxMana, currentMana));
         this.speed = speed;
     }
 
@@ -35,24 +36,34 @@ public class PlayerStats {
     public int getStrength() { return strength; }
     public int getCritChance() { return critChance; }
     public int getCritDamage() { return critDamage; }
-    public int getDefense() { return defense; } // Getter for Defense
+    public int getDefense() { return defense; }
     public int getCurrentMana() { return currentMana; }
     public int getMaxMana() { return maxMana; }
     public int getSpeed() { return speed; }
 
-    // Setters (or methods to modify stats)
+    // Setters
     public void setStrength(int strength) { this.strength = strength; }
     public void setCritChance(int critChance) { this.critChance = Math.max(0, Math.min(100, critChance)); }
     public void setCritDamage(int critDamage) { this.critDamage = critDamage; }
-    public void setDefense(int defense) { this.defense = Math.max(0, defense); } // Setter for Defense
-    public void setCurrentMana(int currentMana) { this.currentMana = Math.max(0, Math.min(this.maxMana, currentMana));}
-    public void setMaxMana(int maxMana) {
-        this.maxMana = Math.max(1, maxMana);
-        // Ensure current mana doesn't exceed new max mana
-        if (this.currentMana > this.maxMana) {
-            this.currentMana = this.maxMana;
-        }
+    public void setDefense(int defense) { this.defense = Math.max(0, defense); }
+
+    public void setCurrentMana(int currentMana) {
+        this.currentMana = Math.max(0, Math.min(this.maxMana, currentMana)); // Clamp against current maxMana
     }
+
+    /**
+     * Sets the maximum mana.
+     * IMPORTANT: This method now ONLY sets the maxMana field.
+     * It does NOT clamp currentMana. Clamping of currentMana happens in setCurrentMana()
+     * or at the end of a full stat update in PlayerStatsManager.
+     * @param newMaxMana The new maximum mana.
+     */
+    public void setMaxMana(int newMaxMana) {
+        this.maxMana = Math.max(1, newMaxMana);
+        // REMOVED: Clamping logic for this.currentMana.
+        // This prevents currentMana from being reset prematurely when maxMana is temporarily set to base during recalculation.
+    }
+
     public void setSpeed(int speed) { this.speed = speed; }
 
     public void addMana(int amount) {
@@ -60,7 +71,7 @@ public class PlayerStats {
     }
 
     public boolean consumeMana(int amount) {
-        if (amount <= 0) return true; // Consuming 0 or negative mana is always successful
+        if (amount <= 0) return true;
         if (this.currentMana >= amount) {
             setCurrentMana(this.currentMana - amount);
             return true;
