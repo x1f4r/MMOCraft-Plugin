@@ -6,12 +6,13 @@ import io.github.x1f4r.mmocraft.crafting.RecipeManager;
 import io.github.x1f4r.mmocraft.items.ArmorSetListener;
 import io.github.x1f4r.mmocraft.items.ItemManager;
 import io.github.x1f4r.mmocraft.items.PlayerAbilityListener;
-import io.github.x1f4r.mmocraft.listeners.EntitySpawnListener; // New listener
+import io.github.x1f4r.mmocraft.listeners.EntitySpawnListener;
+import io.github.x1f4r.mmocraft.listeners.PlayerSatiationListener;
 import io.github.x1f4r.mmocraft.mobs.MobDropListener;
-import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
+import io.github.x1f4r.mmocraft.player.PlayerStatsManager; // Added import
 import io.github.x1f4r.mmocraft.player.listeners.PlayerDamageListener;
 import io.github.x1f4r.mmocraft.player.listeners.PlayerEquipmentListener;
-import io.github.x1f4r.mmocraft.stats.EntityStatsManager;    // New manager
+import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.PluginManager;
@@ -24,31 +25,29 @@ public final class MMOCraft extends JavaPlugin {
     private CraftingGUIListener craftingGUIListener;
     private RecipeManager recipeManager;
     private ItemManager itemManager;
-    private PlayerStatsManager playerStatsManager;
-    private EntityStatsManager entityStatsManager; // New Manager
+    private PlayerStatsManager playerStatsManager; // This line should now work
+    private EntityStatsManager entityStatsManager;
 
     @Override
     public void onEnable() {
         getLogger().info("MMOCraft Plugin enabling...");
-        NBTKeys.init(this); // Initialize NBTKeys utility
+        NBTKeys.init(this);
 
-        // Ensure data folder exists for configs
         if (!getDataFolder().exists()) {
             if (!getDataFolder().mkdirs()) {
                 getLogger().severe("Could not create plugin data folder! This may cause issues.");
             }
         }
-        saveDefaultConfig(); // Ensure config.yml is there (if you use it)
-        saveResource("mobs.yml", false); // Save default mobs.yml if not present
+        saveDefaultConfig();
+        saveResource("mobs.yml", false);
+        saveResource("items.yml", false);
+        saveResource("recipes.yml", false);
 
-
-        // Initialize Managers
         this.itemManager = new ItemManager(this);
         this.recipeManager = new RecipeManager(this);
-        this.playerStatsManager = new PlayerStatsManager(this);
-        this.entityStatsManager = new EntityStatsManager(this); // Initialize new manager
+        this.playerStatsManager = new PlayerStatsManager(this); // This line should now work
+        this.entityStatsManager = new EntityStatsManager(this);
 
-        // Initialize and register Listeners
         this.craftingGUIListener = new CraftingGUIListener(this);
 
         PluginManager pm = getServer().getPluginManager();
@@ -56,11 +55,11 @@ public final class MMOCraft extends JavaPlugin {
         pm.registerEvents(new MobDropListener(this), this);
         pm.registerEvents(new ArmorSetListener(this), this);
         pm.registerEvents(new PlayerAbilityListener(this), this);
-        pm.registerEvents(new PlayerDamageListener(this), this); // This now handles more generic damage
+        pm.registerEvents(new PlayerDamageListener(this), this);
         pm.registerEvents(new PlayerEquipmentListener(this), this);
-        pm.registerEvents(new EntitySpawnListener(this), this); // Register new listener
+        pm.registerEvents(new EntitySpawnListener(this), this);
+        pm.registerEvents(new PlayerSatiationListener(), this);
 
-        // Initialize and register Command(s)
         registerCommands();
 
         getLogger().info("MMOCraft Plugin has been enabled successfully!");
@@ -96,14 +95,13 @@ public final class MMOCraft extends JavaPlugin {
 
         PluginCommand reloadMobsConfigCmd = this.getCommand("reloadmobs");
         if (reloadMobsConfigCmd != null) {
-            reloadMobsConfigCmd.setExecutor(new ReloadMobsConfigCommand(this)); // Assumes ReloadMobsConfigCommand exists
+            reloadMobsConfigCmd.setExecutor(new ReloadMobsConfigCommand(this));
         } else { getLogger().log(Level.WARNING, "Command 'reloadmobs' not found in plugin.yml (Optional: for reloading mobs.yml).");}
     }
 
-    // Getters for Managers
     public RecipeManager getRecipeManager() { return recipeManager; }
     public ItemManager getItemManager() { return itemManager; }
-    public PlayerStatsManager getPlayerStatsManager() { return playerStatsManager; }
-    public EntityStatsManager getEntityStatsManager() { return entityStatsManager; } // Getter for new manager
+    public PlayerStatsManager getPlayerStatsManager() { return playerStatsManager; } // This line should now work
+    public EntityStatsManager getEntityStatsManager() { return entityStatsManager; }
     public CraftingGUIListener getCraftingGUIListener() { return craftingGUIListener; }
 }

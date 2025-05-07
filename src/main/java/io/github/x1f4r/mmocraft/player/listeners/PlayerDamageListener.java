@@ -1,9 +1,9 @@
-package io.github.x1f4r.mmocraft.player.listeners; // Consider renaming package to io.github.x1f4r.mmocraft.listeners
+package io.github.x1f4r.mmocraft.player.listeners;
 
 import io.github.x1f4r.mmocraft.MMOCraft;
 import io.github.x1f4r.mmocraft.player.PlayerStats;
-import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
-import io.github.x1f4r.mmocraft.stats.EntityStats; // For general entity stats
+import io.github.x1f4r.mmocraft.player.PlayerStatsManager; // Added import
+import io.github.x1f4r.mmocraft.stats.EntityStats;
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
 import org.bukkit.Sound;
@@ -20,26 +20,30 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.util.Random;
 
-public class PlayerDamageListener implements Listener { // Rename to GenericDamageListener eventually
+public class PlayerDamageListener implements Listener {
 
-    private final PlayerStatsManager playerStatsManager;
+    private final PlayerStatsManager playerStatsManager; // This line should now work
     private final EntityStatsManager entityStatsManager;
     private final Random random = new Random();
-    // private final MMOCraft plugin; // For NBTKeys if they weren't static or for config
 
     public PlayerDamageListener(MMOCraft plugin) {
-        // this.plugin = plugin;
+        if (plugin.getPlayerStatsManager() == null) {
+            throw new IllegalStateException("PlayerStatsManager has not been initialized in MMOCraft plugin main class!");
+        }
+        if (plugin.getEntityStatsManager() == null) {
+            throw new IllegalStateException("EntityStatsManager has not been initialized in MMOCraft plugin main class!");
+        }
         this.playerStatsManager = plugin.getPlayerStatsManager();
         this.entityStatsManager = plugin.getEntityStatsManager();
     }
 
-    @EventHandler(priority = EventPriority.HIGH) // Adjust priority as needed
+    @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (event.isCancelled() || !(event.getEntity() instanceof LivingEntity)) {
             return;
         }
 
-        double calculatedDamage = event.getDamage(); // Start with damage after vanilla calculations (armor, enchantments)
+        double calculatedDamage = event.getDamage();
         LivingEntity victim = (LivingEntity) event.getEntity();
         LivingEntity attacker = null;
         Projectile projectileSource = null;
@@ -54,19 +58,18 @@ public class PlayerDamageListener implements Listener { // Rename to GenericDama
             }
         }
 
-        // --- I. Attacker's Offensive Calculation ---
         if (attacker != null) {
             int attackerStrength = 0;
             int attackerCritChance = 0;
-            int attackerCritDamage = 0; // This is the bonus damage %, e.g. 50 means +50%
+            int attackerCritDamage = 0;
 
             if (attacker instanceof Player) {
                 PlayerStats pStats = playerStatsManager.getStats((Player) attacker);
                 attackerStrength = pStats.getStrength();
                 attackerCritChance = pStats.getCritChance();
                 attackerCritDamage = pStats.getCritDamage();
-            } else { // Mob attacker
-                EntityStats eStats = entityStatsManager.getStats(attacker); // getStats should handle initialization
+            } else {
+                EntityStats eStats = entityStatsManager.getStats(attacker);
                 if (eStats != null) {
                     attackerStrength = eStats.getStrength();
                     attackerCritChance = eStats.getCritChance();
@@ -74,39 +77,34 @@ public class PlayerDamageListener implements Listener { // Rename to GenericDama
                 }
             }
 
-            // Apply Strength (additive to current damage)
             calculatedDamage += attackerStrength;
 
-            // Apply Critical Hit (multiplicative to current damage)
             if (attackerCritChance > 0 && random.nextDouble() * 100.0 < attackerCritChance) {
-                double critMultiplier = 1.0 + (attackerCritDamage / 100.0); // e.g., 50 critDamage -> 1.5x
+                double critMultiplier = 1.0 + (attackerCritDamage / 100.0);
                 calculatedDamage *= critMultiplier;
 
-                // Feedback for crits
                 if (attacker instanceof Player) {
                     ((Player) attacker).playSound(attacker.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.2f);
                 }
-                if (victim.isValid()) { // Particle on victim
+                if (victim.isValid()) {
                     victim.getWorld().spawnParticle(org.bukkit.Particle.CRIT_MAGIC, victim.getLocation().add(0, victim.getHeight() / 2, 0), 15, 0.3, 0.3, 0.3, 0.05);
                 }
             }
         }
 
-        // --- II. Victim's Defensive Calculation ---
         int victimCustomDefense = 0;
         if (victim instanceof Player) {
             PlayerStats pStats = playerStatsManager.getStats((Player) victim);
             victimCustomDefense = pStats.getDefense();
-        } else { // Mob victim
+        } else {
             EntityStats eStats = entityStatsManager.getStats(victim);
             if (eStats != null) {
                 victimCustomDefense = eStats.getDefense();
             }
         }
 
-        // True Damage Check (bypasses custom defense)
         boolean isTrueDamage = false;
-        if (attacker != null) { // Check direct attacker or their weapon
+        if (attacker != null) {
             if (attacker.getPersistentDataContainer().has(NBTKeys.TRUE_DAMAGE_FLAG_KEY, PersistentDataType.BYTE)) {
                 isTrueDamage = true;
             }
@@ -120,18 +118,16 @@ public class PlayerDamageListener implements Listener { // Rename to GenericDama
                 }
             }
         }
-        if (!isTrueDamage && projectileSource != null) { // Check projectile if it was the source
+        if (!isTrueDamage && projectileSource != null) {
             if (projectileSource.getPersistentDataContainer().has(NBTKeys.TRUE_DAMAGE_FLAG_KEY, PersistentDataType.BYTE)) {
                 isTrueDamage = true;
             }
         }
 
         if (!isTrueDamage && victimCustomDefense > 0) {
-            // Apply custom defense formula: DamageTaken = CurrentDamage * (100 / (100 + Defense))
             calculatedDamage = calculatedDamage * (100.0 / (100.0 + victimCustomDefense));
         }
 
-        // --- III. Finalize Damage ---
-        event.setDamage(Math.max(0.0, calculatedDamage)); // Ensure damage is not negative
+        event.setDamage(Math.max(0.0, calculatedDamage));
     }
 }

@@ -61,12 +61,11 @@ public class ItemManager {
 
     public ItemStack getItem(String itemId) {
         ItemStack template = customItems.get(itemId.toLowerCase());
-        return (template != null) ? template.clone() : null; // Always return a clone
+        return (template != null) ? template.clone() : null;
     }
 
-    // Add this method for tab completion in GiveCustomItemCommand:
     public Set<String> getAllItemIds() {
-        return Collections.unmodifiableSet(customItems.keySet()); // Return unmodifiable for safety
+        return Collections.unmodifiableSet(customItems.keySet());
     }
 
     private ItemStack parseItem(String itemId, ConfigurationSection itemConfig) {
@@ -86,8 +85,8 @@ public class ItemManager {
         if (meta == null) {
             plugin.getLogger().warning("Could not get ItemMeta for material '" + matName + "' (item " + itemId + "). Item will be basic.");
             try {
-                meta = item.getItemMeta();
-                if (meta != null && NBTKeys.ITEM_ID_KEY != null) { // Check NBTKeys.ITEM_ID_KEY
+                meta = item.getItemMeta(); // Retry getting meta
+                if (meta != null && NBTKeys.ITEM_ID_KEY != null) {
                     meta.getPersistentDataContainer().set(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING, itemId.toLowerCase());
                     item.setItemMeta(meta);
                 }
@@ -95,11 +94,9 @@ public class ItemManager {
             return item;
         }
 
-        // Name
         String name = itemConfig.getString("name");
         if (name != null) { meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name)); }
 
-        // Lore
         List<String> lore = itemConfig.getStringList("lore");
         if (!lore.isEmpty()) {
             List<String> coloredLore = new ArrayList<>();
@@ -107,16 +104,14 @@ public class ItemManager {
             meta.setLore(coloredLore);
         }
 
-        // Unbreakable
         boolean unbreakable = itemConfig.getBoolean("unbreakable", false);
         meta.setUnbreakable(unbreakable);
 
-        // Enchantments
         ConfigurationSection enchantsSection = itemConfig.getConfigurationSection("enchants");
         if (enchantsSection != null) {
             for (String enchantKey : enchantsSection.getKeys(false)) {
                 Enchantment enchantment = Enchantment.getByKey(org.bukkit.NamespacedKey.minecraft(enchantKey.toLowerCase()));
-                if (enchantment == null) enchantment = Enchantment.getByName(enchantKey.toUpperCase());
+                if (enchantment == null) enchantment = Enchantment.getByName(enchantKey.toUpperCase()); // Fallback for older names
                 if (enchantment != null) {
                     int level = enchantsSection.getInt(enchantKey, 1);
                     meta.addEnchant(enchantment, level, true);
@@ -124,7 +119,6 @@ public class ItemManager {
             }
         }
 
-        // Attributes (Vanilla Minecraft Attributes)
         ConfigurationSection attributesSection = itemConfig.getConfigurationSection("attributes");
         if (attributesSection != null) {
             for (String attributeKey : attributesSection.getKeys(false)) {
@@ -142,7 +136,6 @@ public class ItemManager {
                             try { slot = EquipmentSlot.valueOf(parts[2].toUpperCase()); }
                             catch (IllegalArgumentException e) { plugin.getLogger().warning("Invalid equipment slot '" + parts[2] + "' for attribute '" + attributeKey + "' on item '" + itemId + "'. Modifier will apply broadly.");}
                         }
-
                         String modifierName = "mmocraft." + itemId + "." + attributeKey.toLowerCase();
                         AttributeModifier modifier = new AttributeModifier(UUID.randomUUID(), modifierName, attrAmount, operation, slot);
                         meta.addAttributeModifier(attribute, modifier);
@@ -153,7 +146,6 @@ public class ItemManager {
             }
         }
 
-        // Item Flags
         List<String> flags = itemConfig.getStringList("item_flags");
         if (!flags.isEmpty()) {
             for (String flagName : flags) {
@@ -162,7 +154,6 @@ public class ItemManager {
             }
         }
 
-        // Custom Stats (Stored in PersistentDataContainer)
         ConfigurationSection customStatsSection = itemConfig.getConfigurationSection("custom_stats");
         if (customStatsSection != null) {
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
@@ -175,7 +166,7 @@ public class ItemManager {
             if (NBTKeys.CRIT_DAMAGE_KEY != null && customStatsSection.contains("CRIT_DAMAGE")) {
                 pdc.set(NBTKeys.CRIT_DAMAGE_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("CRIT_DAMAGE"));
             }
-            if (NBTKeys.MANA_KEY != null) { // Check if MANA_KEY itself is initialized
+            if (NBTKeys.MANA_KEY != null) {
                 if (customStatsSection.contains("MANA")) {
                     pdc.set(NBTKeys.MANA_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MANA"));
                 } else if (customStatsSection.contains("MANA_COST")) {
@@ -187,11 +178,24 @@ public class ItemManager {
             if (NBTKeys.SPEED_KEY != null && customStatsSection.contains("SPEED")) {
                 pdc.set(NBTKeys.SPEED_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("SPEED"));
             }
+            // Defense Key Handling with Debugging
+            if (NBTKeys.DEFENSE_KEY != null) { // Check if NBTKeys.DEFENSE_KEY itself is initialized
+                if (customStatsSection.contains("DEFENSE")) {
+                    int defenseVal = customStatsSection.getInt("DEFENSE");
+                    pdc.set(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER, defenseVal);
+                    // ---- START DEBUG LOGGING ----
+                    plugin.getLogger().info("[ItemManager DEBUG] Item: " + itemId + ", Set NBT DEFENSE_KEY to: " + defenseVal);
+                    // ---- END DEBUG LOGGING ----
+                } else {
+                    // ---- START DEBUG LOGGING ----
+                    plugin.getLogger().info("[ItemManager DEBUG] Item: " + itemId + ", custom_stats section does NOT contain 'DEFENSE'. PDC will not have DEFENSE_KEY set by ItemManager for this stat.");
+                    // ---- END DEBUG LOGGING ----
+                }
+            }
         }
 
         if (NBTKeys.ITEM_ID_KEY != null) {
-            PersistentDataContainer pdc = meta.getPersistentDataContainer();
-            pdc.set(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING, itemId.toLowerCase());
+            meta.getPersistentDataContainer().set(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING, itemId.toLowerCase());
         } else {
             plugin.getLogger().severe("NBTKeys.ITEM_ID_KEY is null! Cannot tag item: " + itemId);
         }

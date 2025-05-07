@@ -2,7 +2,7 @@ package io.github.x1f4r.mmocraft.commands;
 
 import io.github.x1f4r.mmocraft.MMOCraft;
 import io.github.x1f4r.mmocraft.player.PlayerStats;
-import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
+import io.github.x1f4r.mmocraft.player.PlayerStatsManager; // Added import
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

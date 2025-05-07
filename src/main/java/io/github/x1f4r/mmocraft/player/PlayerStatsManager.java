@@ -32,14 +32,15 @@ public class PlayerStatsManager {
     private final Map<UUID, AttributeModifier> speedModifiers = new HashMap<>();
     private static final String SPEED_MODIFIER_UUID_NAMESPACE = "mmocraft_speed_modifier_v2";
 
-    // --- UUIDs for Ender Armor HEALTH Bonuses (Vanilla Attribute) ---
-    // ** IMPORTANT: Replace these placeholder UUIDs with actual unique UUIDs **
+    // UUIDs for Ender Armor HEALTH Bonuses (Vanilla Attribute)
     private static final UUID ENDER_HELMET_HEALTH_BONUS_UUID = UUID.fromString("7a6a2fb6-bedd-4ccb-856e-dd85f78b7cb6");
     private static final UUID ENDER_CHESTPLATE_HEALTH_BONUS_UUID = UUID.fromString("eb367bca-b1e5-41a1-b8cc-ed65e59d84b0");
     private static final UUID ENDER_LEGGINGS_HEALTH_BONUS_UUID = UUID.fromString("9914ed32-fbab-4c18-a2da-7474b9cd5881");
     private static final UUID ENDER_BOOTS_HEALTH_BONUS_UUID = UUID.fromString("011d3c1d-bad6-4321-8cc5-5c0355faae4b");
 
     private static final Map<EquipmentSlot, UUID> enderHealthBonusUuids = new HashMap<>();
+    private static final EquipmentSlot[] equipmentSlotsArray = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+
 
     static {
         enderHealthBonusUuids.put(EquipmentSlot.HEAD, ENDER_HELMET_HEALTH_BONUS_UUID);
@@ -67,24 +68,21 @@ public class PlayerStatsManager {
         if (player == null || !player.isOnline() || stats == null) return;
 
         PlayerInventory inventory = player.getInventory();
-        PlayerStats baseDefaults = PlayerStats.base(); // Get fresh base stats for reset
+        PlayerStats baseDefaults = PlayerStats.base();
 
-        // Reset current stats to base before recalculating from gear
         stats.setStrength(baseDefaults.getStrength());
         stats.setCritChance(baseDefaults.getCritChance());
         stats.setCritDamage(baseDefaults.getCritDamage());
-        stats.setDefense(baseDefaults.getDefense()); // Reset custom defense
+        stats.setDefense(baseDefaults.getDefense());
         stats.setMaxMana(baseDefaults.getMaxMana());
         stats.setSpeed(baseDefaults.getSpeed());
 
-        // Iterate over armor and main hand item
         ItemStack[] armor = inventory.getArmorContents();
         for (ItemStack item : armor) {
-            accumulateStatsFromItem(player, item, stats); // Pass player for world check
+            accumulateStatsFromItem(player, item, stats);
         }
-        accumulateStatsFromItem(player, inventory.getItemInMainHand(), stats); // Pass player
+        accumulateStatsFromItem(player, inventory.getItemInMainHand(), stats);
 
-        stats.setMaxMana(stats.getMaxMana());
         stats.setCurrentMana(stats.getCurrentMana());
     }
 
@@ -92,19 +90,18 @@ public class PlayerStatsManager {
         if (player == null || !player.isOnline()) return;
 
         PlayerStats stats = getStats(player);
-        updateStatsFromEquipment(player, stats); // Recalculate all stats from equipment
+        updateStatsFromEquipment(player, stats);
 
         applySpeedModifier(player, stats.getSpeed());
-        applyEnderHealthBonus(player); // Apply Ender Armor conditional HEALTH bonus
+        applyEnderHealthBonus(player);
     }
 
-    // Modified to accept Player for world checking for End Armor Defense bonus
     private void accumulateStatsFromItem(Player player, ItemStack item, PlayerStats stats) {
         if (item != null && item.hasItemMeta()) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 PersistentDataContainer pdc = meta.getPersistentDataContainer();
-                String itemId = pdc.get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING); // Get item ID for checks
+                String itemId = pdc.get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
 
                 if (NBTKeys.STRENGTH_KEY != null) stats.setStrength(stats.getStrength() + pdc.getOrDefault(NBTKeys.STRENGTH_KEY, PersistentDataType.INTEGER, 0));
                 if (NBTKeys.CRIT_CHANCE_KEY != null) stats.setCritChance(stats.getCritChance() + pdc.getOrDefault(NBTKeys.CRIT_CHANCE_KEY, PersistentDataType.INTEGER, 0));
@@ -112,13 +109,30 @@ public class PlayerStatsManager {
                 if (NBTKeys.MANA_KEY != null) stats.setMaxMana(stats.getMaxMana() + pdc.getOrDefault(NBTKeys.MANA_KEY, PersistentDataType.INTEGER, 0));
                 if (NBTKeys.SPEED_KEY != null) stats.setSpeed(stats.getSpeed() + pdc.getOrDefault(NBTKeys.SPEED_KEY, PersistentDataType.INTEGER, 0));
 
-                // Handle custom Defense and End Armor 2x bonus for Defense
-                if (NBTKeys.DEFENSE_KEY != null && pdc.has(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER)) {
-                    int itemDefense = pdc.getOrDefault(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER, 0);
-                    if (itemId != null && itemId.startsWith("ender_") && player.getWorld().getEnvironment() == World.Environment.THE_END) {
-                        itemDefense *= 2; // Double custom defense if End Armor piece and in The End
+                // Custom Defense
+                if (NBTKeys.DEFENSE_KEY != null ) {
+                    if (pdc.has(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER)) {
+                        int itemDefense = pdc.getOrDefault(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER, 0);
+                        // ---- START DEBUG LOGGING ----
+                        plugin.getLogger().info("[PlayerStatsManager DEBUG Accumulate] Item: " + (itemId != null ? itemId : "UNKNOWN") + " (PDC has DEFENSE_KEY), Read itemDefense_raw = " + itemDefense + ", Player: " + player.getName());
+                        // ---- END DEBUG LOGGING ----
+
+                        if (itemId != null && itemId.startsWith("ender_") && player.getWorld().getEnvironment() == World.Environment.THE_END) {
+                            itemDefense *= 2;
+                            // ---- START DEBUG LOGGING ----
+                            plugin.getLogger().info("[PlayerStatsManager DEBUG Accumulate] Item " + itemId + " in THE_END, doubled defense to: " + itemDefense + ", Player: " + player.getName());
+                            // ---- END DEBUG LOGGING ----
+                        }
+                        int oldTotalDefense = stats.getDefense(); // For logging
+                        stats.setDefense(stats.getDefense() + itemDefense);
+                        // ---- START DEBUG LOGGING ----
+                        plugin.getLogger().info("[PlayerStatsManager DEBUG Accumulate] Player " + player.getName() + " old total defense: " + oldTotalDefense + ", added: " + itemDefense + ", new total defense: " + stats.getDefense());
+                        // ---- END DEBUG LOGGING ----
+                    } else {
+                        // ---- START DEBUG LOGGING ----
+                        plugin.getLogger().info("[PlayerStatsManager DEBUG Accumulate] Item " + (itemId != null ? itemId : "UNKNOWN") + " (PDC does NOT have DEFENSE_KEY), Player: " + player.getName() + ", Current total defense for player: " + stats.getDefense());
+                        // ---- END DEBUG LOGGING ----
                     }
-                    stats.setDefense(stats.getDefense() + itemDefense);
                 }
             }
         }
@@ -129,10 +143,7 @@ public class PlayerStatsManager {
         if (speedAttribute == null) return;
 
         UUID modifierUUID = UUID.nameUUIDFromBytes((SPEED_MODIFIER_UUID_NAMESPACE + player.getUniqueId().toString()).getBytes());
-
         removeModifier(speedAttribute, modifierUUID);
-        speedModifiers.remove(player.getUniqueId());
-
 
         if (speedStatPercentage != 0) {
             double modifierAmount = (double) speedStatPercentage / 100.0;
@@ -143,41 +154,35 @@ public class PlayerStatsManager {
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1
             );
             try {
-                if (!hasModifier(speedAttribute, modifierUUID)) {
-                    speedAttribute.addModifier(newModifier);
-                    speedModifiers.put(player.getUniqueId(), newModifier);
-                }
+                speedAttribute.addModifier(newModifier);
+                speedModifiers.put(player.getUniqueId(), newModifier);
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().log(Level.WARNING, "Could not apply speed modifier for " + player.getName() + " (UUID: " + modifierUUID +"): " + e.getMessage());
             }
+        } else {
+            speedModifiers.remove(player.getUniqueId());
         }
     }
 
-    // This method now ONLY handles the GENERIC_MAX_HEALTH bonus for End Armor
     private void applyEnderHealthBonus(Player player) {
         PlayerInventory inventory = player.getInventory();
-        // Ensure armorContents indices match EquipmentSlot order for direct mapping
-        ItemStack helmet = inventory.getHelmet();
-        ItemStack chestplate = inventory.getChestplate();
-        ItemStack leggings = inventory.getLeggings();
-        ItemStack boots = inventory.getBoots();
-        ItemStack[] armorPieces = {helmet, chestplate, leggings, boots};
+        ItemStack[] armorPieces = {inventory.getHelmet(), inventory.getChestplate(), inventory.getLeggings(), inventory.getBoots()};
 
         World.Environment environment = player.getWorld().getEnvironment();
         boolean inTheEnd = environment == World.Environment.THE_END;
 
         String[] enderItemIds = {"ender_helmet", "ender_chestplate", "ender_leggings", "ender_boots"};
-        // EquipmentSlot[] equipmentSlots is defined as a class member now
+        double[] healthBonusInEnd = {20.0, 30.0, 25.0, 15.0};
 
-        double[] baseHealthValues = {20.0, 30.0, 25.0, 15.0}; // Corresponds to Helmet, Chest, Legs, Boots
+        AttributeInstance healthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        if (healthAttribute == null) return;
 
         for (int i = 0; i < armorPieces.length; i++) {
             ItemStack armorPiece = armorPieces[i];
-            EquipmentSlot currentEquipmentSlot = equipmentSlots[i]; // Use the class member
-            AttributeInstance healthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+            EquipmentSlot currentEquipmentSlot = equipmentSlotsArray[i];
             UUID currentHealthBonusUuid = enderHealthBonusUuids.get(currentEquipmentSlot);
 
-            removeModifier(healthAttribute, currentHealthBonusUuid); // Always remove old
+            removeModifier(healthAttribute, currentHealthBonusUuid);
 
             if (armorPiece != null && armorPiece.hasItemMeta() && NBTKeys.ITEM_ID_KEY != null) {
                 ItemMeta meta = armorPiece.getItemMeta();
@@ -188,10 +193,10 @@ public class PlayerStatsManager {
                     if (itemId != null && itemId.equalsIgnoreCase(enderItemIds[i])) {
                         if (inTheEnd) {
                             AttributeModifier healthMod = new AttributeModifier(currentHealthBonusUuid,
-                                    "enderBonusHealth_" + currentEquipmentSlot.name(), baseHealthValues[i],
+                                    "enderBonusHealth_" + currentEquipmentSlot.name(),
+                                    healthBonusInEnd[i],
                                     AttributeModifier.Operation.ADD_NUMBER);
-
-                            if (healthAttribute != null && !hasModifier(healthAttribute, currentHealthBonusUuid)) {
+                            if (!hasModifier(healthAttribute, currentHealthBonusUuid)) {
                                 healthAttribute.addModifier(healthMod);
                             }
                         }
@@ -214,7 +219,7 @@ public class PlayerStatsManager {
             try {
                 attributeInstance.removeModifier(toRemove);
             } catch (IllegalStateException e) {
-                plugin.getLogger().log(Level.FINEST, "Tried to remove modifier that was already gone: " + modifierUuid);
+                // plugin.getLogger().log(Level.FINEST, "Tried to remove modifier that was already gone or on invalid entity: " + modifierUuid);
             }
         }
     }
@@ -230,31 +235,28 @@ public class PlayerStatsManager {
     }
 
     public void handlePlayerJoin(Player player) {
-        getStats(player); // Ensures a PlayerStats object is created
+        getStats(player);
         updateAndApplyAllEffects(player);
     }
 
     public void handlePlayerQuit(Player player) {
         AttributeInstance speedAttribute = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
         if (speedAttribute != null) {
-            AttributeModifier currentModifier = speedModifiers.remove(player.getUniqueId());
-            if (currentModifier != null) {
-                removeModifier(speedAttribute, currentModifier.getUniqueId());
+            AttributeModifier currentSpeedModifier = speedModifiers.remove(player.getUniqueId());
+            if (currentSpeedModifier != null) {
+                removeModifier(speedAttribute, currentSpeedModifier.getUniqueId());
             }
         }
-        // Also remove Ender Armor HEALTH bonuses on quit
         AttributeInstance healthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-        for (EquipmentSlot slot : equipmentSlots) {
-            if (enderHealthBonusUuids.containsKey(slot)) {
-                removeModifier(healthAttribute, enderHealthBonusUuids.get(slot));
+        if (healthAttribute != null) {
+            for (EquipmentSlot slot : equipmentSlotsArray) {
+                if (enderHealthBonusUuids.containsKey(slot)) {
+                    removeModifier(healthAttribute, enderHealthBonusUuids.get(slot));
+                }
             }
         }
         playerStatsCache.remove(player.getUniqueId());
     }
-
-    // Defined at class level for use in handlePlayerQuit and applyEnderHealthBonus
-    private static final EquipmentSlot[] equipmentSlots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
-
 
     private void startManaRegenTask() {
         new BukkitRunnable() {
@@ -263,26 +265,51 @@ public class PlayerStatsManager {
                 for (UUID playerUUID : new ArrayList<>(playerStatsCache.keySet())) { // Iterate over a copy
                     Player player = Bukkit.getPlayer(playerUUID);
                     if (player != null && player.isOnline()) {
-                        PlayerStats stats = getStats(player); // Safe get
+                        PlayerStats stats = getStats(player);
                         if (stats.getCurrentMana() < stats.getMaxMana()) {
-                            int manaToRegen = (int) Math.max(1, stats.getMaxMana() * 0.025);
+                            int manaToRegen = (int) Math.max(1, stats.getMaxMana() * 0.025); // Regen 2.5% of max mana, min 1
+
+                            // ---- START DEBUG LOGGING ----
+                            plugin.getLogger().info(String.format(
+                                    "[ManaRegen DEBUG PRE] Player: %s, CurrentMana: %d, MaxMana: %d, ToRegen: %d, MaxMana*0.025: %.2f",
+                                    player.getName(), stats.getCurrentMana(), stats.getMaxMana(), manaToRegen, (stats.getMaxMana() * 0.025)
+                            ));
+                            // ---- END DEBUG LOGGING ----
+
                             stats.addMana(manaToRegen);
+
+                            // ---- START DEBUG LOGGING ----
+                            plugin.getLogger().info(String.format(
+                                    "[ManaRegen DEBUG POST] Player: %s, NewCurrentMana: %d, MaxMana: %d",
+                                    player.getName(), stats.getCurrentMana(), stats.getMaxMana()
+                            ));
+                            // ---- END DEBUG LOGGING ----
+                        } else {
+                            // ---- START DEBUG LOGGING ----
+                            // Log only if maxMana is above 100 to reduce spam, or periodically
+                            if (stats.getMaxMana() > 100 || System.currentTimeMillis() % (20 * 60) < 20) { // Log if max > 100 or once a minute
+                                plugin.getLogger().info(String.format(
+                                        "[ManaRegen DEBUG SKIP] Player: %s, CurrentMana: %d, MaxMana: %d (Not regenerating or already full)",
+                                        player.getName(), stats.getCurrentMana(), stats.getMaxMana()
+                                ));
+                            }
+                            // ---- END DEBUG LOGGING ----
                         }
                     }
                 }
             }
-        }.runTaskTimer(plugin, 100L, 20L * 1); // Initial delay 5s, then every 1 second
+        }.runTaskTimer(plugin, 100L, 20L); // Initial delay 5s, then every 1 second
     }
 
     private void startStatRefreshTask() {
         new BukkitRunnable() {
             @Override
             public void run() {
-                for (Player player : Bukkit.getOnlinePlayers()) { // Iterate over online players directly
+                for (Player player : Bukkit.getOnlinePlayers()) {
                     updateAndApplyAllEffects(player);
                 }
             }
-        }.runTaskTimer(plugin, 40L, 20L * 1); // Refresh stats every 1 second
+        }.runTaskTimer(plugin, 40L, 20L);
     }
 
     private void startManaBarUpdateTask() {
@@ -298,23 +325,21 @@ public class PlayerStatsManager {
                     try {
                         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(manaMessage));
                     } catch (NoSuchMethodError e) {
-                        plugin.getLogger().warning("Spigot API for action bar not available. Mana bar will not show.");
-                        this.cancel(); // Stop this task if the API isn't there
-                        return;
+                        // plugin.getLogger().warning("Spigot API for action bar not available. Mana bar will not show.");
+                        // this.cancel();
                     } catch (Exception e) {
                         plugin.getLogger().log(Level.WARNING, "Error sending action bar message to " + player.getName(), e);
                     }
                 }
             }
-        }.runTaskTimer(plugin, 60L, 20L); // Update action bar every 1 second
+        }.runTaskTimer(plugin, 60L, 20L);
     }
 
     public void scheduleStatsUpdate(Player player) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (player != null && player.isOnline()) { // Check if player is still online
+            if (player != null && player.isOnline()) {
                 updateAndApplyAllEffects(player);
             }
-        }, 2L); // 2-tick delay
+        }, 2L);
     }
 }
-
