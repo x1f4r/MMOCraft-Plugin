@@ -1,4 +1,4 @@
-package io.github.x1f4r.mmocraft.player;
+package io.github.x1f4r.mmocraft.stats;
 
 public class PlayerStats {
 
@@ -39,7 +39,7 @@ public class PlayerStats {
     }
 
     // Static factory method for default base stats
-    public static PlayerStats base() {
+    public static PlayerStats createDefault() {
         // Creates stats with default base values and 0 equipment bonuses
         return new PlayerStats(100, 100); // Default base 100 max mana, start with full mana
     }
@@ -86,28 +86,28 @@ public class PlayerStats {
 
 
     // --- Getters/Setters for EQUIPMENT Bonuses (Used ONLY by PlayerStatsManager) ---
-    // These should generally not be called from outside PlayerStatsManager
-    protected int getEquipmentStrength() { return equipmentStrength; }
-    protected int getEquipmentCritChance() { return equipmentCritChance; }
-    protected int getEquipmentCritDamage() { return equipmentCritDamage; }
-    protected int getEquipmentDefense() { return equipmentDefense; }
-    protected int getEquipmentMaxMana() { return equipmentMaxMana; }
-    protected int getEquipmentSpeed() { return equipmentSpeed; }
-    protected int getEquipmentMiningSpeed() { return equipmentMiningSpeed; }
-    protected int getEquipmentForagingSpeed() { return equipmentForagingSpeed; }
-    protected int getEquipmentFishingSpeed() { return equipmentFishingSpeed; }
-    protected int getEquipmentShootingSpeed() { return equipmentShootingSpeed; }
+    // Changed from protected to public
+    public int getEquipmentStrength() { return equipmentStrength; }
+    public int getEquipmentCritChance() { return equipmentCritChance; }
+    public int getEquipmentCritDamage() { return equipmentCritDamage; }
+    public int getEquipmentDefense() { return equipmentDefense; }
+    public int getEquipmentMaxMana() { return equipmentMaxMana; }
+    public int getEquipmentSpeed() { return equipmentSpeed; }
+    public int getEquipmentMiningSpeed() { return equipmentMiningSpeed; }
+    public int getEquipmentForagingSpeed() { return equipmentForagingSpeed; }
+    public int getEquipmentFishingSpeed() { return equipmentFishingSpeed; }
+    public int getEquipmentShootingSpeed() { return equipmentShootingSpeed; }
 
-    protected void setEquipmentStrength(int equipmentStrength) { this.equipmentStrength = equipmentStrength; }
-    protected void setEquipmentCritChance(int equipmentCritChance) { this.equipmentCritChance = equipmentCritChance; }
-    protected void setEquipmentCritDamage(int equipmentCritDamage) { this.equipmentCritDamage = equipmentCritDamage; }
-    protected void setEquipmentDefense(int equipmentDefense) { this.equipmentDefense = equipmentDefense; }
-    protected void setEquipmentMaxMana(int equipmentMaxMana) { this.equipmentMaxMana = equipmentMaxMana; }
-    protected void setEquipmentSpeed(int equipmentSpeed) { this.equipmentSpeed = equipmentSpeed; }
-    protected void setEquipmentMiningSpeed(int equipmentMiningSpeed) { this.equipmentMiningSpeed = equipmentMiningSpeed; }
-    protected void setEquipmentForagingSpeed(int equipmentForagingSpeed) { this.equipmentForagingSpeed = equipmentForagingSpeed; }
-    protected void setEquipmentFishingSpeed(int equipmentFishingSpeed) { this.equipmentFishingSpeed = equipmentFishingSpeed; }
-    protected void setEquipmentShootingSpeed(int equipmentShootingSpeed) { this.equipmentShootingSpeed = equipmentShootingSpeed; }
+    public void setEquipmentStrength(int equipmentStrength) { this.equipmentStrength = equipmentStrength; }
+    public void setEquipmentCritChance(int equipmentCritChance) { this.equipmentCritChance = equipmentCritChance; }
+    public void setEquipmentCritDamage(int equipmentCritDamage) { this.equipmentCritDamage = equipmentCritDamage; }
+    public void setEquipmentDefense(int equipmentDefense) { this.equipmentDefense = equipmentDefense; }
+    public void setEquipmentMaxMana(int equipmentMaxMana) { this.equipmentMaxMana = equipmentMaxMana; }
+    public void setEquipmentSpeed(int equipmentSpeed) { this.equipmentSpeed = equipmentSpeed; }
+    public void setEquipmentMiningSpeed(int equipmentMiningSpeed) { this.equipmentMiningSpeed = equipmentMiningSpeed; }
+    public void setEquipmentForagingSpeed(int equipmentForagingSpeed) { this.equipmentForagingSpeed = equipmentForagingSpeed; }
+    public void setEquipmentFishingSpeed(int equipmentFishingSpeed) { this.equipmentFishingSpeed = equipmentFishingSpeed; }
+    public void setEquipmentShootingSpeed(int equipmentShootingSpeed) { this.equipmentShootingSpeed = equipmentShootingSpeed; }
 
     // --- Current Mana Management ---
     public int getCurrentMana() { return currentMana; }

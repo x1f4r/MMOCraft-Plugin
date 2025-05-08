@@ -1,6 +1,7 @@
 package io.github.x1f4r.mmocraft.display;
 
-import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.core.MMOCore;
+import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.stats.EntityStats;
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
 import org.bukkit.Bukkit;
@@ -15,64 +16,94 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.CreatureSpawnEvent; // Corrected import if it was different
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList; // <<< ADDED IMPORT
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
-public class DamageAndHealthDisplayManager implements Listener {
+public class DamageAndHealthDisplayManager implements Listener { // Implement Listener
 
-    private final MMOCraft plugin;
-    private final EntityStatsManager entityStatsManager;
+    private final MMOCore core;
+    private final MMOPlugin plugin;
+    private final Logger log;
+    private final EntityStatsManager entityStatsManager; // Get from core
+
     private final Map<UUID, ArmorStand> healthBars = new ConcurrentHashMap<>();
     private static final String HEALTH_BAR_METADATA_KEY = "mmocraft_health_bar";
     private static final String DAMAGE_INDICATOR_METADATA_KEY = "mmocraft_damage_indicator";
-    private final DecimalFormat damageFormat = new DecimalFormat("#.#");
-    private final DecimalFormat healthFormat = new DecimalFormat("#");
+    private final DecimalFormat damageFormat = new DecimalFormat("#,##0.#"); // Format with commas
+    private final DecimalFormat healthFormat = new DecimalFormat("#,##0"); // Format with commas
 
-    private final double healthBarYOffset = 0.5; // Adjust as needed, how high above the mob's head
+    private final double healthBarYOffset; // = 0.6; // Configurable?
+    private final int healthBarUpdateInterval; // = 5; // Ticks
+    private final int damageIndicatorDuration; // = 30; // Ticks
+    private final double damageIndicatorRisePerTick; // = 0.05;
 
-    public DamageAndHealthDisplayManager(MMOCraft plugin) {
-        this.plugin = plugin;
-        this.entityStatsManager = plugin.getEntityStatsManager();
-        // plugin.getServer().getPluginManager().registerEvents(this, plugin); // Registered in MMOCraft main
+    public DamageAndHealthDisplayManager(MMOCore core) {
+        this.core = core;
+        this.plugin = core.getPlugin();
+        this.log = MMOPlugin.getMMOLogger();
+        this.entityStatsManager = core.getEntityStatsManager(); // Get manager from core
+
+        // Load config values
+        this.healthBarYOffset = plugin.getConfig().getDouble("display.health_bar.y_offset", 0.6);
+        this.healthBarUpdateInterval = plugin.getConfig().getInt("display.health_bar.update_interval_ticks", 5);
+        this.damageIndicatorDuration = plugin.getConfig().getInt("display.damage_indicator.duration_ticks", 30);
+        this.damageIndicatorRisePerTick = plugin.getConfig().getDouble("display.damage_indicator.rise_per_tick", 0.05);
+    }
+
+    public void initialize() {
         startHealthBarUpdaterTask();
+        log.info("DamageAndHealthDisplayManager initialized.");
     }
 
     // --- Floating Damage Numbers ---
 
     public void createFloatingDamageIndicator(LivingEntity victim, double damage, boolean isCrit, boolean isTrueDamage) {
-        if (victim == null || victim.isDead() || damage <= 0) {
+        if (victim == null || victim.isDead() || damage <= 0 || victim instanceof ArmorStand) {
             return;
         }
 
         Location loc = victim.getLocation().add(
-                (Math.random() * 0.6) - 0.3, // Random X offset
-                victim.getHeight() * 0.75 + (Math.random() * 0.3), // Slightly above midpoint + random Y
-                (Math.random() * 0.6) - 0.3  // Random Z offset
+                (Math.random() * 0.8) - 0.4, // Random X offset
+                victim.getHeight() * 0.8 + (Math.random() * 0.4), // Slightly above midpoint + random Y
+                (Math.random() * 0.8) - 0.4  // Random Z offset
         );
+
+        // Ensure the armor stand doesn't spawn inside blocks
+        if (!loc.getBlock().isPassable()) {
+            loc = victim.getEyeLocation().add(0, 0.5, 0); // Fallback spawn location
+        }
+
 
         ArmorStand armorStand = loc.getWorld().spawn(loc, ArmorStand.class, as -> {
             as.setVisible(false);
             as.setGravity(false);
             as.setSmall(true);
-            as.setMarker(true);
+            as.setMarker(true); // Essential: prevents interaction and collision
             as.setInvulnerable(true);
+            as.setPersistent(false); // Don't save to disk
             as.setMetadata(DAMAGE_INDICATOR_METADATA_KEY, new FixedMetadataValue(plugin, true));
 
             String damageText;
+            // Using brighter colors and bold for crits
             if (isTrueDamage) {
-                damageText = ChatColor.WHITE + "✧" + damageFormat.format(damage) + "✧";
+                // White with maybe subtle markers
+                damageText = ChatColor.WHITE + "✧" + damageFormat.format(damage) + "✧"; // Changed marker
             } else if (isCrit) {
-                damageText = ChatColor.GOLD + "✧" + ChatColor.YELLOW + damageFormat.format(damage) + ChatColor.GOLD + "✧";
+                // Bright Yellow/Gold with bold and crit markers
+                damageText = ChatColor.GOLD + "" + ChatColor.BOLD + "✧" + ChatColor.YELLOW + "" + ChatColor.BOLD + damageFormat.format(damage) + ChatColor.GOLD + "" + ChatColor.BOLD + "✧"; // Changed marker
             } else {
+                // Standard Gray
                 damageText = ChatColor.GRAY + damageFormat.format(damage);
             }
             as.setCustomName(damageText);
@@ -81,53 +112,60 @@ public class DamageAndHealthDisplayManager implements Listener {
 
         new BukkitRunnable() {
             private int ticksLived = 0;
-            private final double risePerTick = 0.05; // How much it rises each tick
-            private final int durationTicks = 30;   // About 1.5 seconds
 
             @Override
             public void run() {
-                if (ticksLived >= durationTicks || !armorStand.isValid() || armorStand.isDead()) {
+                if (ticksLived >= damageIndicatorDuration || !armorStand.isValid() || armorStand.isDead()) {
                     if (armorStand.isValid()) armorStand.remove();
                     this.cancel();
                     return;
                 }
-                armorStand.teleport(armorStand.getLocation().add(0, risePerTick, 0));
+                // Move slightly up each tick
+                armorStand.teleport(armorStand.getLocation().add(0, damageIndicatorRisePerTick, 0));
                 ticksLived++;
             }
-        }.runTaskTimer(plugin, 0L, 1L);
+        }.runTaskTimer(plugin, 0L, 1L); // Run every tick
     }
 
     // --- Health Indicators ---
 
+    // Listener method now part of this class
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
+        // Ignore players, armor stands, and specific non-mob entities if needed
         if (event.getEntity() instanceof Player || event.getEntity() instanceof ArmorStand) {
             return;
         }
-        // Delay slightly to allow other plugins (including MMOCraft's EntityStatsManager) to modify the entity
+        // Also check if health bars are enabled in config?
+        // if (!plugin.getConfig().getBoolean("display.health_bar.enabled", true)) return;
+
+        // Delay slightly to allow EntityStatsManager to potentially process the entity first
         final LivingEntity spawnedEntity = event.getEntity();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (spawnedEntity.isValid() && !spawnedEntity.isDead()) { // Check validity before adding
+            if (spawnedEntity.isValid() && !spawnedEntity.isDead()) {
                 addHealthBar(spawnedEntity);
             }
-        }, 2L);
+        }, 2L); // 2 ticks delay
     }
 
+    // Listener method now part of this class
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof LivingEntity && !(event.getEntity() instanceof Player) && !(event.getEntity() instanceof ArmorStand)) {
+        if (event.getEntity() instanceof LivingEntity && !(event.getEntity() instanceof Player || event.getEntity() instanceof ArmorStand)) {
             LivingEntity victim = (LivingEntity) event.getEntity();
-            Bukkit.getScheduler().runTaskLater(plugin, () -> { // Run next tick to get updated health
+            // Update health bar on the next tick to reflect the damage taken
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (victim.isValid() && !victim.isDead()) {
                     updateHealthBar(victim);
                 } else {
+                    // If damage killed the entity, ensure bar is removed
                     removeHealthBar(victim.getUniqueId());
                 }
             }, 1L);
         }
     }
 
-
+    // Listener method now part of this class
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
         if (event.getEntity() instanceof LivingEntity && !(event.getEntity() instanceof Player)) {
@@ -135,24 +173,36 @@ public class DamageAndHealthDisplayManager implements Listener {
         }
     }
 
-    @EventHandler
+    // Listener method now part of this class
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChunkUnload(ChunkUnloadEvent event) {
         for (Entity entity : event.getChunk().getEntities()) {
-            if (healthBars.containsKey(entity.getUniqueId())) {
+            // Check if it's an entity we might have a health bar for
+            if (entity instanceof LivingEntity && !(entity instanceof Player)) {
                 ArmorStand healthBar = healthBars.remove(entity.getUniqueId());
                 if (healthBar != null && healthBar.isValid()) {
                     healthBar.remove();
+                    log.finer("Removed health bar for entity in unloaded chunk: " + entity.getUniqueId());
+                }
+            }
+            // Also clean up any stray damage indicators in the chunk
+            if (entity instanceof ArmorStand && entity.hasMetadata(DAMAGE_INDICATOR_METADATA_KEY)) {
+                if (entity.isValid()) {
+                    entity.remove();
+                    log.finer("Removed stray damage indicator in unloaded chunk: " + entity.getUniqueId());
                 }
             }
         }
     }
 
-    public void addHealthBar(LivingEntity entity) {
-        if (entity == null || !entity.isValid() || entity.isDead() || entity instanceof Player || entity instanceof ArmorStand || healthBars.containsKey(entity.getUniqueId())) {
+    private void addHealthBar(LivingEntity entity) {
+        if (entity == null || !entity.isValid() || entity.isDead() || healthBars.containsKey(entity.getUniqueId())) {
             return;
         }
+        log.finer("Adding health bar for: " + entity.getType() + " (" + entity.getUniqueId() + ")");
 
-        entityStatsManager.registerEntity(entity);
+        // Ensure stats are loaded by EntityStatsManager (should happen via EntitySpawnListener ideally)
+        // EntityStats stats = entityStatsManager.getStats(entity); // This ensures initialization
 
         Location barLocation = entity.getLocation().add(0, entity.getHeight() + healthBarYOffset, 0);
 
@@ -163,44 +213,43 @@ public class DamageAndHealthDisplayManager implements Listener {
             as.setMarker(true);
             as.setInvulnerable(true);
             as.setCustomNameVisible(true);
+            as.setPersistent(false);
             as.setMetadata(HEALTH_BAR_METADATA_KEY, new FixedMetadataValue(plugin, true));
         });
 
         healthBars.put(entity.getUniqueId(), healthBar);
-        updateHealthBarInternal(entity, healthBar, true); // Initial update
+        updateHealthBarInternal(entity, healthBar); // Perform initial update
     }
 
-    public void updateHealthBar(LivingEntity entity) {
+    private void updateHealthBar(LivingEntity entity) {
         ArmorStand healthBar = healthBars.get(entity.getUniqueId());
         if (healthBar != null && healthBar.isValid() && entity.isValid() && !entity.isDead()) {
-            updateHealthBarInternal(entity, healthBar, false);
-        } else if (healthBar != null && (!entity.isValid() || entity.isDead())) {
+            updateHealthBarInternal(entity, healthBar);
+        } else if (healthBar != null) { // If bar exists but entity is invalid/dead
             removeHealthBar(entity.getUniqueId());
         }
+        // If bar doesn't exist but entity is valid, maybe recreate it? Or assume addHealthBar handles it.
     }
 
-    private void updateHealthBarInternal(LivingEntity entity, ArmorStand healthBar, boolean isInitial) {
+    private void updateHealthBarInternal(LivingEntity entity, ArmorStand healthBar) {
         if (entity == null || !entity.isValid() || healthBar == null || !healthBar.isValid()) {
-            if (entity != null) removeHealthBar(entity.getUniqueId());
-            else if (healthBar != null && healthBar.isValid()) healthBar.remove();
+            if(healthBar != null && healthBar.isValid()) healthBar.remove(); // Clean up bar if entity is gone
+            if(entity != null) healthBars.remove(entity.getUniqueId()); // Remove from map
             return;
         }
 
-        // Ensure entity stats are loaded, especially for max health
-        EntityStats customStats = entityStatsManager.getStats(entity); // This will initialize if not present
-
+        // Get Bukkit attributes first
         AttributeInstance maxHealthAttr = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
         double currentHealth = entity.getHealth();
-        double maxHealth = (maxHealthAttr != null) ? maxHealthAttr.getValue() : 20.0; // Default to 20 if attribute is null
+        double maxHealth = (maxHealthAttr != null) ? maxHealthAttr.getValue() : 20.0; // Bukkit's current max health
 
-        // Use customStats' maxHealth if it's different from the attribute's base value
-        // This assumes EntityStatsManager correctly sets the base attribute.
-        if (customStats != null && customStats.getMaxHealth() > 0) {
-            maxHealth = customStats.getMaxHealth();
-        }
+        // Note: We rely on EntityStatsManager having already SET the base health attribute.
+        // We display based on the entity's CURRENT Bukkit health attributes.
+        // EntityStats stats = entityStatsManager.getStats(entity); // Get our cached stats if needed for display logic
 
-        currentHealth = Math.min(currentHealth, maxHealth); // Clamp current health
-        currentHealth = Math.max(0, currentHealth);      // Ensure health isn't negative
+
+        // Clamp current health just in case
+        currentHealth = Math.max(0, Math.min(currentHealth, maxHealth));
 
         ChatColor healthColor;
         double percentage = (maxHealth > 0) ? (currentHealth / maxHealth) : 0;
@@ -209,65 +258,76 @@ public class DamageAndHealthDisplayManager implements Listener {
         else if (percentage > 0.15) healthColor = ChatColor.RED;
         else healthColor = ChatColor.DARK_RED;
 
-        String entityNameDisplay = ""; // Default to no name prefix
+        String entityNameDisplay = "";
         if (entity.getCustomName() != null && !entity.getCustomName().isEmpty()) {
-            entityNameDisplay = entity.getCustomName() + "\n";
-        } else {
-            // Optional: Use default entity type name if no custom name
-            // entityNameDisplay = ChatColor.GRAY + entity.getType().name().toLowerCase().replace("_", " ") + "\n";
+            entityNameDisplay = entity.getCustomName() + " "; // Add space after name
         }
+        // Optional: Use default name if no custom name
+        // else { entityNameDisplay = ChatColor.GRAY + entity.getType().name() + " "; }
 
-        String healthText = healthColor + "❤ " + healthFormat.format(currentHealth) + ChatColor.GRAY + "/" + ChatColor.GREEN + healthFormat.format(maxHealth) + healthColor + " ❤";
+
+        String healthText = healthColor + healthFormat.format(currentHealth) + ChatColor.GRAY + "/" + ChatColor.GREEN + healthFormat.format(maxHealth);
 
         healthBar.setCustomName(entityNameDisplay + healthText);
 
+        // Teleport the bar to follow the entity
         Location newBarLocation = entity.getLocation().add(0, entity.getHeight() + healthBarYOffset, 0);
-        if (isInitial || !healthBar.getLocation().toVector().equals(newBarLocation.toVector())) {
-            healthBar.teleport(newBarLocation);
-        }
+        // Optimization: Only teleport if location significantly changed? Maybe not needed with marker ArmorStands.
+        healthBar.teleport(newBarLocation);
     }
 
 
-    public void removeHealthBar(UUID entityId) {
+    private void removeHealthBar(UUID entityId) {
         ArmorStand healthBar = healthBars.remove(entityId);
         if (healthBar != null && healthBar.isValid()) {
             healthBar.remove();
+            log.finer("Removed health bar for entity: " + entityId);
         }
     }
 
-    public void removeAllHealthBars() {
+    public void cleanupOnDisable() {
+        log.info("Cleaning up health bars and damage indicators...");
+        // Remove all managed health bars
         for (ArmorStand healthBar : healthBars.values()) {
             if (healthBar != null && healthBar.isValid()) {
                 healthBar.remove();
             }
         }
         healthBars.clear();
+
+        // Also remove any stray damage indicators across all worlds
+        Bukkit.getWorlds().forEach(world -> {
+            world.getEntitiesByClass(ArmorStand.class).forEach(as -> {
+                if (as.hasMetadata(DAMAGE_INDICATOR_METADATA_KEY)) {
+                    if (as.isValid()) as.remove();
+                }
+                // Optional: Clean up health bars missed by the map?
+                // if (as.hasMetadata(HEALTH_BAR_METADATA_KEY)) {
+                //    if (as.isValid()) as.remove();
+                // }
+            });
+        });
+        log.info("Display cleanup finished.");
     }
 
     private void startHealthBarUpdaterTask() {
         new BukkitRunnable() {
             @Override
             public void run() {
-                for (Map.Entry<UUID, ArmorStand> entry : new ConcurrentHashMap<>(healthBars).entrySet()) { // Iterate over a copy for safe removal
-                    UUID entityId = entry.getKey();
-                    ArmorStand healthBar = entry.getValue();
-                    Entity entity = Bukkit.getEntity(entityId);
+                // Iterate over a copy of the keys to allow safe removal within the loop
+                for (UUID entityId : new ArrayList<>(healthBars.keySet())) { // <<< USES IMPORT
+                    ArmorStand healthBar = healthBars.get(entityId);
+                    Entity entity = Bukkit.getEntity(entityId); // More efficient than iterating all world entities
 
                     if (entity instanceof LivingEntity && entity.isValid() && !entity.isDead() && healthBar != null && healthBar.isValid()) {
-                        updateHealthBarInternal((LivingEntity) entity, healthBar, false);
+                        // Entity and bar are valid, update the bar
+                        updateHealthBarInternal((LivingEntity) entity, healthBar);
                     } else {
-                        if (healthBar != null && healthBar.isValid()) {
-                            healthBar.remove();
-                        }
-                        healthBars.remove(entityId);
+                        // Entity is invalid, dead, or bar is invalid - remove the entry
+                        removeHealthBar(entityId);
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 5L);
-    }
-
-    public void cleanupOnDisable() {
-        removeAllHealthBars();
-        // BukkitRunnables associated with this class instance are typically cancelled by the plugin disabling.
+        }.runTaskTimer(plugin, 20L, healthBarUpdateInterval); // Initial delay, then repeat interval
     }
 }

@@ -41,7 +41,7 @@ recipes:
     result: { item_id: tree_helmet }
     shape: [ "LLL", "L L" ]
     ingredients:
-      L: { type: TAG, value: LOGS, amount: 32 }
+      L: { type: TAG, value: LOGS, amount: 64 }
   tree_chestplate:
     type: SHAPED
     result: { item_id: tree_chestplate }
@@ -59,9 +59,8 @@ recipes:
     result: { item_id: tree_boots }
     shape: [ "L L", "L L" ]
     ingredients:
-      L: { type: TAG, value: LOGS, amount: 32 }
+      L: { type: TAG, value: LOGS, amount: 64 }
 
-  # --- Aspect of the End Recipe (Example) ---
   aspect_of_the_end:
     type: SHAPED
     result: { item_id: aspect_of_the_end }
@@ -74,7 +73,6 @@ recipes:
       E: { type: MATERIAL, value: END_STONE, amount: 16 }
       S: { type: MATERIAL, value: NETHERITE_INGOT, amount: 1 }
 
-  # --- NEW Tree Bow Recipe ---
   tree_bow:
     type: SHAPED
     result: { item_id: tree_bow }
@@ -85,3 +83,4 @@ recipes:
     ingredients:
       S: { type: MATERIAL, value: STRING, amount: 64 }
       L: { type: TAG, value: LOGS, amount: 64 }
+

@@ -1,6 +1,7 @@
 package io.github.x1f4r.mmocraft.crafting;
 
-import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.core.MMOCore;
+import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.crafting.models.CustomRecipe;
 import io.github.x1f4r.mmocraft.crafting.models.RequiredItem;
 import org.bukkit.*;
@@ -25,47 +26,51 @@ import java.util.stream.Collectors;
 
 public class CraftingGUIListener implements Listener {
 
-    private final MMOCraft plugin;
+    private final MMOCore core;
+    private final MMOPlugin plugin;
     private final RecipeManager recipeManager;
-    public static final String GUI_TITLE = ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "MMO Crafter";
-    private static final Logger logger = MMOCraft.getPlugin(MMOCraft.class).getLogger();
+    private final Logger log;
 
-    // GUI Layout Constants (for a 36-slot inventory - 4 rows)
-    private static final int[] INPUT_SLOTS_ARRAY = {
-            10, 11, 12, // Row 2, Columns 2-4
-            19, 20, 21, // Row 3, Columns 2-4
-            28, 29, 30  // Row 4, Columns 2-4
+    public static final String GUI_TITLE = ChatColor.DARK_GRAY + "Custom Crafter"; // Changed title slightly
+    private static final Logger logger = MMOPlugin.getMMOLogger(); // Static logger access
+
+    // GUI Layout Constants (5 rows = 45 slots) - Adjusted for more space maybe? Or keep 36? Let's use 54 (6 rows)
+    private static final int GUI_SIZE = 54;
+    private static final int[] INPUT_SLOTS_ARRAY = { // Centered 3x3 grid
+            11, 12, 13,
+            20, 21, 22,
+            29, 30, 31
     };
     public static final Set<Integer> INPUT_SLOTS = Arrays.stream(INPUT_SLOTS_ARRAY).boxed().collect(Collectors.toSet());
 
-    public static final int RESULT_SLOT = 16; // Row 2, Column 8
-    public static final int ARROW_SLOT = 14;  // Row 2, Column 6 (decorative arrow)
+    public static final int RESULT_SLOT = 25; // Right of the grid, middle row
+    public static final int ARROW_SLOT = 23;  // Between grid and result
 
     private static final ItemStack FILLER_PANE;
     private static final ItemStack ARROW_ITEM;
+    private static final ItemStack BARRIER_ITEM; // For blocking result slot when invalid
 
     static {
         FILLER_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta paneMeta = FILLER_PANE.getItemMeta();
-        if (paneMeta != null) {
-            paneMeta.setDisplayName(ChatColor.BLACK + ""); // No name
-            FILLER_PANE.setItemMeta(paneMeta);
-        }
+        if (paneMeta != null) { paneMeta.setDisplayName(ChatColor.BLACK + ""); FILLER_PANE.setItemMeta(paneMeta); }
 
-        ARROW_ITEM = new ItemStack(Material.SPECTRAL_ARROW);
+        ARROW_ITEM = new ItemStack(Material.SPECTRAL_ARROW); // Or other arrow type
         ItemMeta arrowMeta = ARROW_ITEM.getItemMeta();
-        if (arrowMeta != null) {
-            arrowMeta.setDisplayName(ChatColor.YELLOW + "Craft ->");
-            ARROW_ITEM.setItemMeta(arrowMeta);
-        }
+        if (arrowMeta != null) { arrowMeta.setDisplayName(ChatColor.YELLOW + "Craft ->"); ARROW_ITEM.setItemMeta(arrowMeta); }
+
+        BARRIER_ITEM = new ItemStack(Material.BARRIER);
+        ItemMeta barrierMeta = BARRIER_ITEM.getItemMeta();
+        if (barrierMeta != null) { barrierMeta.setDisplayName(ChatColor.RED + "Invalid Recipe"); BARRIER_ITEM.setItemMeta(barrierMeta); }
     }
 
+    // Calculate decorative slots based on functional slots and GUI size
     public static final Set<Integer> DECORATIVE_SLOTS = new HashSet<>();
     static {
         Set<Integer> functionalSlots = new HashSet<>(INPUT_SLOTS);
         functionalSlots.add(RESULT_SLOT);
         functionalSlots.add(ARROW_SLOT);
-        for (int i = 0; i < 36; i++) {
+        for (int i = 0; i < GUI_SIZE; i++) {
             if (!functionalSlots.contains(i)) {
                 DECORATIVE_SLOTS.add(i);
             }
@@ -73,20 +78,27 @@ public class CraftingGUIListener implements Listener {
     }
 
 
-    public CraftingGUIListener(MMOCraft plugin) {
-        this.plugin = plugin;
-        this.recipeManager = plugin.getRecipeManager();
+    public CraftingGUIListener(MMOCore core) {
+        this.core = core;
+        this.plugin = core.getPlugin();
+        this.recipeManager = core.getRecipeManager(); // Get from core
+        this.log = MMOPlugin.getMMOLogger();
     }
 
     public void openCustomCraftingGUI(Player player) {
-        Inventory customCrafter = Bukkit.createInventory(null, 36, GUI_TITLE);
+        Inventory customCrafter = Bukkit.createInventory(null, GUI_SIZE, GUI_TITLE);
 
+        // Fill decorative slots
         for (int slot : DECORATIVE_SLOTS) {
             customCrafter.setItem(slot, FILLER_PANE.clone());
         }
+        // Place arrow
         customCrafter.setItem(ARROW_SLOT, ARROW_ITEM.clone());
+        // Result slot initially empty or barrier? Let's start empty.
 
         player.openInventory(customCrafter);
+        // Initial update check when opening
+        scheduleUpdate(customCrafter, player);
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -95,11 +107,11 @@ public class CraftingGUIListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player)) return;
 
         Player player = (Player) event.getWhoClicked();
-        Inventory clickedInventory = event.getClickedInventory();
-        Inventory topInventory = event.getView().getTopInventory();
-        int slot = event.getSlot();
+        Inventory clickedInventory = event.getClickedInventory(); // Inv clicked IN
+        Inventory topInventory = event.getView().getTopInventory(); // The GUI itself
+        int slot = event.getSlot(); // Raw slot index in the view
 
-
+        // Prevent interaction with decorative/arrow slots in the GUI
         if (clickedInventory != null && clickedInventory.equals(topInventory)) {
             if (DECORATIVE_SLOTS.contains(slot) || slot == ARROW_SLOT) {
                 event.setCancelled(true);
@@ -107,46 +119,51 @@ public class CraftingGUIListener implements Listener {
             }
         }
 
-        boolean updateScheduled = false;
+        boolean updateNeeded = false;
 
+        // --- Handling clicks on the RESULT SLOT ---
         if (clickedInventory != null && clickedInventory.equals(topInventory) && slot == RESULT_SLOT) {
-            event.setCancelled(true);
+            event.setCancelled(true); // Always cancel direct interaction with result slot
             ItemStack resultItem = topInventory.getItem(RESULT_SLOT);
-            if (resultItem != null && resultItem.getType() != Material.AIR) {
+            // Allow taking item only if it's not the barrier/placeholder
+            if (resultItem != null && resultItem.getType() != Material.AIR && resultItem.getType() != Material.BARRIER) {
                 if (event.getClick().isShiftClick()) {
                     handleShiftClickResult(player, topInventory);
                 } else if (event.getClick().isLeftClick() || event.getClick().isRightClick()) {
                     handleNormalClickResult(event, player, topInventory);
                 }
-                scheduleUpdate(topInventory, player); updateScheduled = true;
+                updateNeeded = true; // Update after taking result
             }
         }
-        else if ( (clickedInventory != null && clickedInventory.equals(topInventory) && INPUT_SLOTS.contains(slot)) ||
-                (clickedInventory != null && clickedInventory.equals(event.getView().getBottomInventory())) ) {
-
-            if (event.getClick().isShiftClick() && clickedInventory.equals(event.getView().getBottomInventory())) {
-                event.setCancelled(true);
-                handleShiftClickIntoGrid(event, player, topInventory);
-                scheduleUpdate(topInventory, player); updateScheduled = true;
-            }
-            else if (event.getClick().isShiftClick() && clickedInventory.equals(topInventory) && INPUT_SLOTS.contains(slot)) {
-                event.setCancelled(true);
-                handleShiftClickOutOfGrid(event, player, topInventory);
-                scheduleUpdate(topInventory, player); updateScheduled = true;
-            }
-            else {
-                scheduleUpdate(topInventory, player); updateScheduled = true;
-            }
+        // --- Handling clicks within the INPUT SLOTS or Player Inventory ---
+        else if (clickedInventory != null) {
+             // If clicking inside the input grid OR the player's inventory
+             if (INPUT_SLOTS.contains(slot) || clickedInventory.equals(event.getView().getBottomInventory())) {
+                 updateNeeded = true; // Any click here might change the recipe
+             }
+             // Handle shift-clicking items INTO the grid from player inventory
+             if (event.isShiftClick() && clickedInventory.equals(event.getView().getBottomInventory())) {
+                 // Default shift-click behavior might work if slots are empty,
+                 // but custom handling might be needed for specific placement.
+                 // For now, just mark for update. Bukkit might handle the move.
+                 updateNeeded = true;
+                 // event.setCancelled(true); // Optionally cancel and handle move manually
+                 // handleShiftClickIntoGrid(event, player, topInventory);
+             }
+             // Handle shift-clicking items OUT of the grid to player inventory
+             else if (event.isShiftClick() && clickedInventory.equals(topInventory) && INPUT_SLOTS.contains(slot)) {
+                  // Default shift-click should move to player inventory. Mark for update.
+                  updateNeeded = true;
+             }
         }
 
-        if (!updateScheduled && clickedInventory != null) {
-            if (clickedInventory.equals(topInventory) || clickedInventory.equals(event.getView().getBottomInventory())) {
-                scheduleUpdate(topInventory, player);
-            }
+        // Schedule an update if needed
+        if (updateNeeded) {
+            scheduleUpdate(topInventory, player);
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!event.getView().getTitle().equals(GUI_TITLE)) return;
         if (!(event.getWhoClicked() instanceof Player)) return;
@@ -154,18 +171,22 @@ public class CraftingGUIListener implements Listener {
         Inventory topInventory = event.getView().getTopInventory();
 
         boolean affectsCraftingArea = false;
+        // Check if any dragged-over slots are within the GUI's functional area
         for (int rawSlot : event.getRawSlots()) {
-            if (rawSlot < topInventory.getSize()) {
-                if (INPUT_SLOTS.contains(rawSlot) || rawSlot == RESULT_SLOT) {
+            if (rawSlot < topInventory.getSize()) { // Only consider slots in the top inventory
+                if (INPUT_SLOTS.contains(rawSlot)) {
                     affectsCraftingArea = true;
-                    break;
+                    break; // No need to check further
                 }
-                if (DECORATIVE_SLOTS.contains(rawSlot) || rawSlot == ARROW_SLOT) {
+                // Prevent dragging into decorative/result slots
+                if (DECORATIVE_SLOTS.contains(rawSlot) || rawSlot == ARROW_SLOT || rawSlot == RESULT_SLOT) {
                     event.setCancelled(true);
                     return;
                 }
             }
         }
+
+        // If the drag affects the input slots, schedule an update
         if (affectsCraftingArea) {
             scheduleUpdate(topInventory, player);
         }
@@ -173,11 +194,14 @@ public class CraftingGUIListener implements Listener {
 
 
     private void scheduleUpdate(Inventory inventory, Player player) {
+        // Use Bukkit scheduler to run the update on the next tick
+        // This prevents issues with inventory state during the event handling
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Ensure the player still has the same inventory open
             if (player.getOpenInventory().getTopInventory().equals(inventory)) {
                 updateResultSlot(inventory, player);
             }
-        }, 1L);
+        }, 1L); // 1 tick delay
     }
 
     private ItemStack[] getMatrix(Inventory guiInventory) {
@@ -195,13 +219,16 @@ public class CraftingGUIListener implements Listener {
         if (customRecipe != null) {
             guiInventory.setItem(RESULT_SLOT, customRecipe.getResult());
         } else {
-            // Check for vanilla recipes if no custom recipe matches
-            Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
-            if (vanillaRecipe != null) {
-                guiInventory.setItem(RESULT_SLOT, vanillaRecipe.getResult());
-            } else {
-                guiInventory.setItem(RESULT_SLOT, null); // No custom or vanilla recipe found
-            }
+            // Check for vanilla recipes ONLY if no custom recipe matches
+            // Note: Bukkit.getServer().getCraftingRecipe() might not work reliably with custom inventories.
+            // A more robust solution might involve checking vanilla recipes directly if needed.
+            // For simplicity, we'll primarily focus on custom recipes here.
+            // Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
+            // if (vanillaRecipe != null) {
+            //     guiInventory.setItem(RESULT_SLOT, vanillaRecipe.getResult());
+            // } else {
+                 guiInventory.setItem(RESULT_SLOT, null); // Clear slot if no custom recipe found
+            // }
         }
     }
 
@@ -211,15 +238,17 @@ public class CraftingGUIListener implements Listener {
         Player player = (Player) event.getPlayer();
         Inventory topInventory = event.getInventory();
 
+        // Return items from input slots to player inventory
         for (int slot : INPUT_SLOTS_ARRAY) {
             ItemStack item = topInventory.getItem(slot);
             if (item != null && item.getType() != Material.AIR) {
                 player.getInventory().addItem(item.clone()).forEach((index, remaining) ->
                         player.getWorld().dropItemNaturally(player.getLocation(), remaining)
                 );
-                topInventory.setItem(slot, null);
+                topInventory.setItem(slot, null); // Clear the slot in the GUI
             }
         }
+        // Clear result slot just in case
         if (topInventory.getItem(RESULT_SLOT) != null) {
             topInventory.setItem(RESULT_SLOT, null);
         }
@@ -227,228 +256,216 @@ public class CraftingGUIListener implements Listener {
 
     private void handleShiftClickResult(Player player, Inventory topInventory) {
         ItemStack resultTemplate = topInventory.getItem(RESULT_SLOT);
-        if (resultTemplate == null || resultTemplate.getType() == Material.AIR) return;
+        if (resultTemplate == null || resultTemplate.getType() == Material.AIR || resultTemplate.getType() == Material.BARRIER) return;
 
-        int maxCrafts = calculateMaxCrafts(topInventory, player);
-        if (maxCrafts <= 0) {
-            ItemStack[] currentMatrix = getMatrix(topInventory);
-            CustomRecipe customRecipe = recipeManager.findMatchingRecipe(currentMatrix);
-            if(customRecipe == null && Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld()) != null) {
-                maxCrafts = 1;
-            } else if (customRecipe != null) {
-                maxCrafts = 1;
-            } else {
-                return;
-            }
-        }
+        int maxCrafts = calculateMaxCrafts(topInventory); // Calculate how many times we can craft with current ingredients
+        if (maxCrafts <= 0) return; // Cannot craft even once
 
-        ItemStack baseCraftedItem = null;
+        ItemStack baseCraftedItem = resultTemplate.clone(); // Use the template for the base item
         int totalCraftedAmount = 0;
+        int itemsMovedToInv = 0;
 
         for (int i = 0; i < maxCrafts; i++) {
-            ItemStack currentResultCheck = topInventory.getItem(RESULT_SLOT); // Re-check result slot
-            if (currentResultCheck == null || !currentResultCheck.isSimilar(resultTemplate)) break;
+            ItemStack currentResultCheck = topInventory.getItem(RESULT_SLOT);
+            // Ensure the recipe is still valid before consuming ingredients
+            if (currentResultCheck == null || !currentResultCheck.isSimilar(resultTemplate)) {
+                 log.warning("Recipe became invalid during shift-click crafting for " + player.getName());
+                 break; // Stop crafting if recipe changes mid-way
+            }
 
-            ItemStack craftedNow = attemptSingleCraft(player, topInventory);
-            if (craftedNow != null) {
-                if (baseCraftedItem == null) baseCraftedItem = craftedNow.clone();
-                totalCraftedAmount += craftedNow.getAmount();
-                // updateResultSlot(topInventory, player); // Update result slot after each craft - handled by scheduleUpdate from attemptSingleCraft
+            // Attempt to craft one item and consume ingredients
+            if (attemptSingleCraft(player, topInventory)) {
+                totalCraftedAmount += baseCraftedItem.getAmount(); // Add amount of one craft result
             } else {
-                break;
+                 log.warning("Failed to consume ingredients during shift-click craft #" + (i+1) + " for " + player.getName());
+                break; // Stop if ingredient consumption fails
+            }
+            // Update the result slot immediately after consuming ingredients
+            updateResultSlot(topInventory, player);
+        }
+
+        // If items were crafted, try to add them to the player's inventory
+        if (totalCraftedAmount > 0) {
+            ItemStack finalStack = baseCraftedItem.clone();
+            finalStack.setAmount(totalCraftedAmount);
+
+            HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(finalStack);
+
+            // Calculate how many were actually added
+            if (!leftovers.isEmpty()) {
+                itemsMovedToInv = totalCraftedAmount - leftovers.get(0).getAmount();
+                player.getWorld().dropItemNaturally(player.getLocation(), leftovers.get(0));
+                player.sendMessage(ChatColor.YELLOW + "Inventory full, some crafted items dropped!");
+            } else {
+                itemsMovedToInv = totalCraftedAmount;
+            }
+
+            if (itemsMovedToInv > 0) {
+                 player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.7f, 1.8f);
+                 // Optionally update statistics or trigger achievements
             }
         }
-
-        if (baseCraftedItem != null && totalCraftedAmount > 0) {
-            baseCraftedItem.setAmount(totalCraftedAmount);
-            player.getInventory().addItem(baseCraftedItem.clone()).forEach((idx, item) -> {
-                player.getWorld().dropItemNaturally(player.getLocation(), item);
-                player.sendMessage(ChatColor.YELLOW + "Your inventory was full, some items dropped!");
-            });
-            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.7f, 1.8f);
-        }
-        // Schedule a final update after all shift-click operations
+        // Final update check after shift-click is complete
         scheduleUpdate(topInventory, player);
     }
 
     private void handleNormalClickResult(InventoryClickEvent event, Player player, Inventory topInventory) {
-        ItemStack cursorItem = event.getCursor();
-        ItemStack resultItemInSlot = topInventory.getItem(RESULT_SLOT);
-        if (resultItemInSlot == null || resultItemInSlot.getType() == Material.AIR) return;
+        ItemStack cursorItem = event.getCursor(); // Item on cursor
+        ItemStack resultItemInSlot = topInventory.getItem(RESULT_SLOT); // Item currently in result slot
 
-        ItemStack craftedItem = attemptSingleCraft(player, topInventory);
+        // Check if crafting is possible
+        if (resultItemInSlot == null || resultItemInSlot.getType() == Material.AIR || resultItemInSlot.getType() == Material.BARRIER) return;
 
-        if (craftedItem != null) {
-            if (cursorItem == null || cursorItem.getType() == Material.AIR) {
-                event.getView().setCursor(craftedItem);
-            } else if (cursorItem.isSimilar(craftedItem)) {
-                int canAdd = Math.min(craftedItem.getAmount(), cursorItem.getMaxStackSize() - cursorItem.getAmount());
-                if (canAdd > 0) {
-                    cursorItem.setAmount(cursorItem.getAmount() + canAdd);
-                    craftedItem.setAmount(craftedItem.getAmount() - canAdd);
-                }
-                if (craftedItem.getAmount() > 0) {
-                    player.getInventory().addItem(craftedItem.clone()).forEach((idx, item) -> player.getWorld().dropItemNaturally(player.getLocation(), item));
-                }
-                event.getView().setCursor(cursorItem);
-            } else {
-                player.getInventory().addItem(craftedItem.clone()).forEach((idx, item) -> player.getWorld().dropItemNaturally(player.getLocation(), item));
-                player.sendMessage(ChatColor.RED + "You can't stack that item with what's on your cursor!");
+        // Check if the cursor can accept the result item
+        if (cursorItem != null && cursorItem.getType() != Material.AIR) {
+            if (!cursorItem.isSimilar(resultItemInSlot)) {
+                // Cursor has a different item, cannot take result
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0f, 1.0f); // Error sound
+                return;
+            }
+            if (cursorItem.getAmount() >= cursorItem.getMaxStackSize()) {
+                 // Cursor stack is full
+                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0f, 1.0f);
+                 return;
             }
         }
-        // Schedule an update after a normal click on the result.
+
+        // Attempt to craft one item and consume ingredients
+        if (attemptSingleCraft(player, topInventory)) {
+            ItemStack craftedItem = resultItemInSlot.clone(); // Get a clone of the result *before* potential update
+
+            if (cursorItem == null || cursorItem.getType() == Material.AIR) {
+                event.getView().setCursor(craftedItem);
+            } else { // Cursor has a similar item
+                 int canAdd = Math.min(craftedItem.getAmount(), cursorItem.getMaxStackSize() - cursorItem.getAmount());
+                 cursorItem.setAmount(cursorItem.getAmount() + canAdd);
+                 event.getView().setCursor(cursorItem);
+                 // If craftedItem had more than could fit, drop the remainder (shouldn't happen with standard recipes)
+                 if (craftedItem.getAmount() > canAdd) {
+                     ItemStack remainder = craftedItem.clone();
+                     remainder.setAmount(craftedItem.getAmount() - canAdd);
+                     player.getWorld().dropItemNaturally(player.getLocation(), remainder);
+                 }
+            }
+             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.5f, 1.5f);
+        } else {
+             log.warning("Failed to consume ingredients on normal click craft for " + player.getName());
+             // Optionally play an error sound
+             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0f, 1.0f);
+        }
+
+        // Schedule an update after the click action
         scheduleUpdate(topInventory, player);
     }
 
-    private ItemStack attemptSingleCraft(Player player, Inventory guiInventory) {
+    /**
+     * Attempts to consume ingredients for the currently displayed recipe.
+     * Assumes the recipe in the result slot is valid and matches the grid.
+     * @return true if ingredients were successfully consumed, false otherwise.
+     */
+    private boolean attemptSingleCraft(Player player, Inventory guiInventory) {
         ItemStack resultItemFromSlot = guiInventory.getItem(RESULT_SLOT);
-        if (resultItemFromSlot == null || resultItemFromSlot.getType().isAir()) return null;
+        if (resultItemFromSlot == null || resultItemFromSlot.getType().isAir()) return false;
 
         ItemStack[] currentMatrix = getMatrix(guiInventory);
         CustomRecipe customRecipe = recipeManager.findMatchingRecipe(currentMatrix);
 
+        // Ensure the found recipe actually produces the item currently in the result slot
         if (customRecipe != null && customRecipe.getResult().isSimilar(resultItemFromSlot)) {
-            if (customRecipe.matches(currentMatrix)) {
-                if (customRecipe.consumeIngredients(guiInventory, INPUT_SLOTS_ARRAY)) {
-                    player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.5f, 1.5f);
-                    return customRecipe.getResult().clone();
-                }
-            }
-        } else {
-            Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
-            if (vanillaRecipe != null && vanillaRecipe.getResult().isSimilar(resultItemFromSlot)) {
-                for (int i = 0; i < currentMatrix.length; i++) {
-                    if (currentMatrix[i] != null && currentMatrix[i].getType() != Material.AIR) {
-                        int guiSlotIndex = INPUT_SLOTS_ARRAY[i];
-                        ItemStack itemInGuiSlot = guiInventory.getItem(guiSlotIndex);
-
-                        if (itemInGuiSlot != null && itemInGuiSlot.getAmount() > 0) {
-                            Material typeInSlot = itemInGuiSlot.getType();
-                            itemInGuiSlot.setAmount(itemInGuiSlot.getAmount() - 1);
-
-                            if (itemInGuiSlot.getAmount() <= 0) {
-                                if (typeInSlot == Material.WATER_BUCKET || typeInSlot == Material.LAVA_BUCKET || typeInSlot == Material.MILK_BUCKET) {
-                                    guiInventory.setItem(guiSlotIndex, new ItemStack(Material.BUCKET));
-                                } else if (typeInSlot.toString().contains("POTION") || typeInSlot == Material.HONEY_BOTTLE || typeInSlot == Material.DRAGON_BREATH) {
-                                    guiInventory.setItem(guiSlotIndex, new ItemStack(Material.GLASS_BOTTLE));
-                                } else if (typeInSlot == Material.MUSHROOM_STEW || typeInSlot == Material.RABBIT_STEW || typeInSlot == Material.BEETROOT_SOUP || typeInSlot == Material.SUSPICIOUS_STEW) {
-                                    guiInventory.setItem(guiSlotIndex, new ItemStack(Material.BOWL));
-                                }
-                                else {
-                                    guiInventory.setItem(guiSlotIndex, null);
-                                }
-                            } else {
-                                guiInventory.setItem(guiSlotIndex, itemInGuiSlot);
-                            }
-                        }
-                    }
-                }
-                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.5f, 1.5f);
-                return vanillaRecipe.getResult().clone();
+            // Consume ingredients based on the custom recipe definition
+            if (customRecipe.consumeIngredients(guiInventory, INPUT_SLOTS_ARRAY)) {
+                return true;
+            } else {
+                 log.severe("Ingredient consumption failed for custom recipe " + customRecipe.getId() + " even though it matched!");
+                 return false; // Consumption failed
             }
         }
-        return null;
+        // TODO: Add vanilla recipe ingredient consumption if vanilla recipes are supported
+        /*
+        else {
+             Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
+             if (vanillaRecipe != null && vanillaRecipe.getResult().isSimilar(resultItemFromSlot)) {
+                 // Implement vanilla ingredient consumption logic here
+                 // This is more complex as it needs to handle item types and amounts correctly,
+                 // including container items (buckets, bottles).
+                 // For simplicity, often omitted if focusing on custom recipes.
+                 log.finer("Vanilla recipe matched, but consumption not implemented in this GUI.");
+                 return false; // Or return true if implemented
+             }
+        }
+        */
+
+        log.warning("Attempted craft, but no matching recipe found for result: " + resultItemFromSlot.getType());
+        return false; // No matching recipe found for the item in the result slot
     }
 
 
-    private void handleShiftClickIntoGrid(InventoryClickEvent event, Player player, Inventory topInventory) {
-        ItemStack sourceItem = event.getCurrentItem();
-        if (sourceItem == null || sourceItem.getType() == Material.AIR) return;
-
-        ItemStack remainingToMove = sourceItem.clone();
-
-        for (int targetSlot : INPUT_SLOTS_ARRAY) {
-            if (remainingToMove.getAmount() <= 0) break;
-            ItemStack itemInGrid = topInventory.getItem(targetSlot);
-            if (itemInGrid != null && itemInGrid.isSimilar(remainingToMove)) {
-                int spaceAvailable = itemInGrid.getMaxStackSize() - itemInGrid.getAmount();
-                int amountToTransfer = Math.min(remainingToMove.getAmount(), spaceAvailable);
-                if (amountToTransfer > 0) {
-                    itemInGrid.setAmount(itemInGrid.getAmount() + amountToTransfer);
-                    remainingToMove.setAmount(remainingToMove.getAmount() - amountToTransfer);
-                }
-            }
-        }
-        if (remainingToMove.getAmount() > 0) {
-            for (int targetSlot : INPUT_SLOTS_ARRAY) {
-                if (remainingToMove.getAmount() <= 0) break;
-                if (topInventory.getItem(targetSlot) == null || topInventory.getItem(targetSlot).getType() == Material.AIR) {
-                    topInventory.setItem(targetSlot, remainingToMove.clone());
-                    remainingToMove.setAmount(0);
-                    break;
-                }
-            }
-        }
-        if (remainingToMove.getAmount() == 0) {
-            event.setCurrentItem(null);
-        } else if (remainingToMove.getAmount() < sourceItem.getAmount()){
-            event.getCurrentItem().setAmount(remainingToMove.getAmount());
-        }
-    }
-
-    private void handleShiftClickOutOfGrid(InventoryClickEvent event, Player player, Inventory topInventory) {
-        ItemStack sourceItem = event.getCurrentItem();
-        if (sourceItem == null || sourceItem.getType() == Material.AIR) return;
-
-        ItemStack itemToMove = sourceItem.clone();
-        HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(itemToMove);
-
-        if (leftovers.isEmpty()) {
-            topInventory.setItem(event.getSlot(), null);
-        } else {
-            int amountNotMoved = 0;
-            for (ItemStack leftoverStack : leftovers.values()) {
-                amountNotMoved += leftoverStack.getAmount();
-            }
-            sourceItem.setAmount(amountNotMoved);
-            topInventory.setItem(event.getSlot(), sourceItem);
-            player.sendMessage(ChatColor.YELLOW + "Inventory full!");
-        }
-    }
-
-    private int calculateMaxCrafts(Inventory guiInventory, Player player) {
+    /**
+     * Calculates the maximum number of times the current recipe can be crafted
+     * based on the minimum stack size of the ingredients in the grid.
+     */
+    private int calculateMaxCrafts(Inventory guiInventory) {
         ItemStack resultItem = guiInventory.getItem(RESULT_SLOT);
-        if (resultItem == null || resultItem.getType().isAir()) return 0;
+        if (resultItem == null || resultItem.getType().isAir() || resultItem.getType() == Material.BARRIER) return 0;
+
+        ItemStack[] currentMatrix = getMatrix(guiInventory);
+        CustomRecipe customRecipe = recipeManager.findMatchingRecipe(currentMatrix);
+
+        if (customRecipe == null || !customRecipe.getResult().isSimilar(resultItem)) {
+            // TODO: Handle vanilla recipe max craft calculation if needed
+            return 0; // No matching custom recipe for the current result
+        }
 
         int maxPossibleCrafts = Integer.MAX_VALUE;
-        ItemStack[] currentMatrix = getMatrix(guiInventory);
 
-        CustomRecipe customRecipe = recipeManager.findMatchingRecipe(currentMatrix);
-        if (customRecipe != null && customRecipe.getResult().isSimilar(resultItem)) {
-            if (customRecipe.getType() == CustomRecipe.RecipeType.SHAPED) {
-                boolean possible = true;
-                for (int i = 0; i < 9; i++) {
-                    RequiredItem required = customRecipe.getRequirementForMatrixIndex(i);
-                    if (required != null) {
-                        ItemStack itemInGrid = currentMatrix[i];
-                        if (itemInGrid == null || !required.matches(itemInGrid) || itemInGrid.getAmount() < required.getAmount()) {
-                            possible = false;
-                            break;
-                        }
-                        maxPossibleCrafts = Math.min(maxPossibleCrafts, itemInGrid.getAmount() / required.getAmount());
+        if (customRecipe.getType() == CustomRecipe.RecipeType.SHAPED) {
+            // Map to store total required amount per unique ingredient item in the grid
+            Map<Integer, Integer> totalRequiredPerSlot = new HashMap<>();
+            Map<Integer, Integer> availablePerSlot = new HashMap<>();
+
+            for (int i = 0; i < 9; i++) {
+                RequiredItem required = customRecipe.getRequirementForMatrixIndex(i);
+                if (required != null) {
+                    int guiSlotIndex = INPUT_SLOTS_ARRAY[i];
+                    ItemStack itemInGrid = guiInventory.getItem(guiSlotIndex);
+
+                    // Basic check: If required item is missing or doesn't match, cannot craft at all
+                    if (itemInGrid == null || !required.matches(itemInGrid)) {
+                        return 0;
                     }
+
+                    // Calculate how many times this specific slot's requirement can be fulfilled
+                    int craftsPossibleForSlot = itemInGrid.getAmount() / required.getAmount();
+                    maxPossibleCrafts = Math.min(maxPossibleCrafts, craftsPossibleForSlot);
                 }
-                return possible ? Math.max(0, maxPossibleCrafts) : 0;
-            } else { return 1; }
-        } else {
-            Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
-            if (vanillaRecipe != null && vanillaRecipe.getResult().isSimilar(resultItem)) {
-                // Simplified: if a vanilla recipe matches, assume we can craft at least one for shift-click purposes.
-                // True max craft calculation for vanilla is complex and not implemented here.
-                return 1;
             }
+             return Math.max(0, maxPossibleCrafts); // Ensure non-negative
+
+        } else if (customRecipe.getType() == CustomRecipe.RecipeType.SHAPELESS) {
+            // TODO: Implement max craft calculation for shapeless recipes
+            return 1; // Placeholder: Assume can only craft 1 for now
         }
-        return 0;
+
+        return 0; // Should not be reached
     }
 
-    @EventHandler
+
+    // Optional: Handle right-clicking a vanilla crafting table to open custom GUI
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) return;
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        // Check if right-clicking a block with the main hand
+        if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+
         Block clickedBlock = event.getClickedBlock();
+        // Check if the clicked block is a crafting table
         if (clickedBlock != null && clickedBlock.getType() == Material.CRAFTING_TABLE) {
-            event.setCancelled(true);
-            openCustomCraftingGUI(event.getPlayer());
+            // Check config if vanilla table should be overridden
+            // boolean overrideVanilla = plugin.getConfig().getBoolean("crafting.override_vanilla_table", true);
+            // if (overrideVanilla) {
+                event.setCancelled(true); // Prevent vanilla GUI from opening
+                openCustomCraftingGUI(event.getPlayer());
+            // }
         }
     }
 }
+

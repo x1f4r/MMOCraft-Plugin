@@ -1,0 +1,17 @@
+# MMOCraft Default Configuration
+
+# Player Regeneration Settings
+player:
+  regen:
+    health:
+      percentage: 0.02    # Regenerate 2% of max health
+      min_amount: 0.5     # Minimum 0.5 health points per regen tick
+      interval_ticks: 40  # Regen every 40 ticks (2 seconds)
+    mana:
+      percentage: 0.025   # Regenerate 2.5% of max mana
+      min_amount: 1       # Minimum 1 mana point per regen tick
+      interval_ticks: 20  # Regen every 20 ticks (1 second)
+
+# Other plugin settings can go here
+debug_mode: false
+

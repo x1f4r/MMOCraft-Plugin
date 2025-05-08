@@ -1,66 +1,56 @@
-package io.github.x1f4r.mmocraft.listeners;
+package io.github.x1f4r.mmocraft.listeners; // General listeners package
 
-import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
-import org.bukkit.entity.ArmorStand; // Import ArmorStand
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.ArmorStand; // Import ArmorStand
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
-// Optional: For chunk unload cleanup
-// import org.bukkit.event.world.ChunkUnloadEvent;
-// import org.bukkit.entity.Entity;
 
 public class EntitySpawnListener implements Listener {
 
-    // private final MMOCraft plugin; // Only needed if you need direct plugin access here
     private final EntityStatsManager entityStatsManager;
 
-    public EntitySpawnListener(MMOCraft plugin) {
-        // this.plugin = plugin;
-        this.entityStatsManager = plugin.getEntityStatsManager();
+    public EntitySpawnListener(MMOCore core) {
+        this.entityStatsManager = core.getEntityStatsManager();
     }
 
-    @EventHandler(priority = EventPriority.MONITOR) // Monitor, so we act after other plugins might have modified/spawned
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true) // Process early to apply stats
     public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (event.isCancelled()) {
-            return;
-        }
+        if (event.isCancelled()) return;
 
         LivingEntity entity = event.getEntity();
-        // MODIFIED LINE: Also ignore ArmorStand entities
-        if (entity instanceof Player || entity instanceof ArmorStand) {
-            return; // Players are handled by PlayerStatsManager on join, ArmorStands should not have stats managed
-        }
 
-        // Register and apply custom stats to newly spawned mobs
-        // The EntityStatsManager's initializeStatsForEntity (called by getStats or registerEntity)
-        // will load from mobs.yml and apply vanilla attributes.
-        // plugin.getLogger().fine("EntitySpawnListener: Creature spawned: " + entity.getType() + ", applying stats.");
+        // Ignore players and armor stands (used for display)
+        if (entity instanceof Player || entity instanceof ArmorStand) {
+            return;
+        }
+        // Let the manager handle registration and stat application
         entityStatsManager.registerEntity(entity);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) // Monitor death to clean up last
     public void onEntityDeath(EntityDeathEvent event) {
-        LivingEntity entity = event.getEntity();
-        if (entity instanceof Player) {
-            return;
-        }
-        // plugin.getLogger().fine("EntitySpawnListener: Entity died: " + entity.getType() + ", unregistering stats.");
-        entityStatsManager.unregisterEntity(entity); // Clean up from cache
+        // Unregister stats from the cache and restore original attributes
+        // Note: DamageAndHealthDisplayManager also listens to remove health bar
+        entityStatsManager.unregisterEntity(event.getEntity());
     }
 
-    /* // Optional: Advanced cleanup for entities in unloaded chunks
-    @EventHandler
+    // Optional: Handle ChunkUnloadEvent to unregister entities if necessary,
+    // although death event should cover most cases. Be careful with performance.
+    /*
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChunkUnload(ChunkUnloadEvent event) {
         for (Entity entity : event.getChunk().getEntities()) {
-            if (entity instanceof LivingEntity && !(entity instanceof Player)) {
+            if (entity instanceof LivingEntity && !(entity instanceof Player || entity instanceof ArmorStand)) {
                 entityStatsManager.unregisterEntity((LivingEntity) entity);
             }
         }
     }
     */
 }
+

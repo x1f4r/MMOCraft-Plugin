@@ -1,6 +1,7 @@
 package io.github.x1f4r.mmocraft.crafting.models;
 
-import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.core.MMOCore;
+import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.items.ItemManager;
 import org.bukkit.Material;
 import org.bukkit.Tag;
@@ -19,11 +20,12 @@ public class CustomRecipe {
     private final String resultItemId;
     private final int resultAmount;
     private final RecipeType type;
-    private String[] shape; // Max 3x3, e.g., [" X ", "X X", " X "]
-    private Map<Character, RequiredItem> shapedIngredients;
+    private String[] shape; // Max 3x3 for SHAPED
+    private Map<Character, RequiredItem> shapedIngredients; // Key: char in shape, Value: RequiredItem
+    // private List<RequiredItem> shapelessIngredients; // For SHAPELESS (implement later)
 
-    private transient ItemManager itemManager;
-    private static final Logger logger = MMOCraft.getPlugin(MMOCraft.class).getLogger();
+    private final ItemManager itemManager; // Needed to get the result ItemStack
+    private static final Logger log = MMOPlugin.getMMOLogger();
 
 
     private CustomRecipe(String id, String resultItemId, int resultAmount, RecipeType type, ItemManager manager) {
@@ -34,19 +36,21 @@ public class CustomRecipe {
         this.itemManager = manager;
     }
 
-    public static CustomRecipe loadFromConfig(MMOCraft plugin, ItemManager itemManager, String id, ConfigurationSection config, Map<String, Tag<Material>> customTags) {
+    public static CustomRecipe loadFromConfig(MMOCore core, String id, ConfigurationSection config, Map<String, Tag<Material>> customTags) {
+        ItemManager itemManager = core.getItemManager(); // Get ItemManager from core
+
         ConfigurationSection resultSection = config.getConfigurationSection("result");
         if (resultSection == null) {
-            plugin.getLogger().warning("Recipe '" + id + "' is missing result section!");
+            log.warning("Recipe '" + id + "' is missing result section! Skipping.");
             return null;
         }
         String resultId = resultSection.getString("item_id");
         if (resultId == null || resultId.isEmpty()) {
-            plugin.getLogger().warning("Recipe '" + id + "' result section is missing 'item_id'!");
+            log.warning("Recipe '" + id + "' result section is missing 'item_id'! Skipping.");
             return null;
         }
         if (itemManager.getItem(resultId) == null) {
-            plugin.getLogger().warning("Item ID '" + resultId + "' referenced by recipe '" + id + "' not found in ItemManager!");
+            log.warning("Result Item ID '" + resultId + "' referenced by recipe '" + id + "' not found in ItemManager! Skipping recipe.");
             return null;
         }
 
@@ -56,65 +60,81 @@ public class CustomRecipe {
         try {
             recipeType = RecipeType.valueOf(typeStr);
         } catch (IllegalArgumentException e) {
+            log.warning("Invalid recipe type '" + typeStr + "' for recipe '" + id + "'. Defaulting to SHAPED.");
             recipeType = RecipeType.SHAPED;
         }
 
         CustomRecipe recipe = new CustomRecipe(id, resultId, resultAmount, recipeType, itemManager);
 
         if (recipeType == RecipeType.SHAPED) {
-            List<String> shapeList = config.getStringList("shape");
-            if (shapeList.isEmpty() || shapeList.size() > 3) {
-                plugin.getLogger().warning("Invalid shape for SHAPED recipe '" + id + "'. Must be 1-3 rows.");
-                return null;
-            }
-            recipe.shape = new String[shapeList.size()];
-            for(int i = 0; i < shapeList.size(); i++) {
-                String row = shapeList.get(i);
-                if (row.length() > 3) {
-                    plugin.getLogger().warning("Shape row '" + row + "' in recipe '" + id + "' exceeds 3 columns.");
-                    return null;
-                }
-                recipe.shape[i] = String.format("%-3s", row); // Pad with spaces to 3 chars
-            }
-
-            ConfigurationSection ingredientsSection = config.getConfigurationSection("ingredients");
-            if (ingredientsSection == null) {
-                plugin.getLogger().warning("Missing ingredients section for SHAPED recipe '" + id + "'.");
-                return null;
-            }
-            recipe.shapedIngredients = new HashMap<>();
-            for (String key : ingredientsSection.getKeys(false)) {
-                if (key.length() != 1) {
-                    plugin.getLogger().warning("Invalid ingredient key '" + key + "' in recipe '" + id + "'. Must be a single character.");
-                    continue;
-                }
-                char ingredientChar = key.charAt(0);
-                RequiredItem requiredItem = RequiredItem.loadFromConfig(plugin, ingredientsSection.getConfigurationSection(key), customTags);
-                if (requiredItem != null) {
-                    recipe.shapedIngredients.put(ingredientChar, requiredItem);
-                } else {
-                    plugin.getLogger().warning("Invalid ingredient definition for key '" + key + "' in recipe '" + id + "'.");
-                    return null;
-                }
-            }
-            for (String row : recipe.shape) {
-                for (char c : row.toCharArray()) {
-                    if (c != ' ' && !recipe.shapedIngredients.containsKey(c)) {
-                        plugin.getLogger().warning("Shape for recipe '" + id + "' contains char '" + c + "' not defined in ingredients.");
-                        return null;
-                    }
-                }
-            }
+            if (!loadShapedData(recipe, config, customTags)) return null;
         } else if (recipeType == RecipeType.SHAPELESS) {
-            plugin.getLogger().warning("Shapeless recipe loading not yet fully implemented for recipe '" + id + "'.");
+             log.warning("Shapeless recipe loading not yet implemented for recipe '" + id + "'. Skipping.");
+             return null; // TODO: Implement shapeless loading
+        } else {
+            log.warning("Unknown recipe type for recipe '" + id + "'. Skipping.");
             return null;
         }
         return recipe;
     }
 
-    public boolean matches(ItemStack[] matrix) { // Takes a 9-slot matrix
+    private static boolean loadShapedData(CustomRecipe recipe, ConfigurationSection config, Map<String, Tag<Material>> customTags) {
+        List<String> shapeList = config.getStringList("shape");
+        if (shapeList.isEmpty() || shapeList.size() > 3) {
+            log.warning("Invalid shape for SHAPED recipe '" + recipe.id + "'. Must be 1-3 rows. Skipping.");
+            return false;
+        }
+        recipe.shape = new String[shapeList.size()];
+        for(int i = 0; i < shapeList.size(); i++) {
+            String row = shapeList.get(i);
+            if (row.length() > 3) {
+                log.warning("Shape row '" + row + "' in recipe '" + recipe.id + "' exceeds 3 columns. Skipping.");
+                return false;
+            }
+            // Pad with spaces to ensure consistent 3-char width for easier indexing
+            recipe.shape[i] = String.format("%-3s", row);
+        }
+
+        ConfigurationSection ingredientsSection = config.getConfigurationSection("ingredients");
+        if (ingredientsSection == null) {
+            log.warning("Missing ingredients section for SHAPED recipe '" + recipe.id + "'. Skipping.");
+            return false;
+        }
+        recipe.shapedIngredients = new HashMap<>();
+        for (String key : ingredientsSection.getKeys(false)) {
+            if (key.length() != 1) {
+                log.warning("Invalid ingredient key '" + key + "' in recipe '" + recipe.id + "'. Must be a single character. Skipping ingredient.");
+                continue; // Skip this invalid key, but maybe allow recipe to load if others are ok? Or return false?
+            }
+            char ingredientChar = key.charAt(0);
+            if (ingredientChar == ' ') {
+                 log.warning("Ingredient key cannot be a space character in recipe '" + recipe.id + "'. Skipping ingredient.");
+                 continue;
+            }
+
+            RequiredItem requiredItem = RequiredItem.loadFromConfig(ingredientsSection.getConfigurationSection(key), customTags);
+            if (requiredItem != null) {
+                recipe.shapedIngredients.put(ingredientChar, requiredItem);
+            } else {
+                log.warning("Invalid ingredient definition for key '" + key + "' in recipe '" + recipe.id + "'. Skipping recipe.");
+                return false; // Fail recipe load if any ingredient is invalid
+            }
+        }
+        // Validate that all chars used in shape are defined in ingredients
+        for (String row : recipe.shape) {
+            for (char c : row.toCharArray()) {
+                if (c != ' ' && !recipe.shapedIngredients.containsKey(c)) {
+                    log.warning("Shape for recipe '" + recipe.id + "' contains character '" + c + "' which is not defined in ingredients. Skipping recipe.");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+
+    public boolean matches(ItemStack[] matrix) { // Takes a 9-slot matrix (0-8)
         if (matrix == null || matrix.length != 9) {
-            // logger.finer("[RecipeCheck]["+id+"] -> Fail: Invalid matrix provided.");
             return false;
         }
 
@@ -124,85 +144,104 @@ public class CustomRecipe {
                     int matrixIndex = r * 3 + c;
                     ItemStack itemInMatrixSlot = matrix[matrixIndex];
 
-                    char shapeChar = ' ';
-                    if (r < shape.length && c < shape[r].length()) { // Check shape bounds
+                    char shapeChar = ' '; // Default to space (empty)
+                    // Check bounds of the defined shape
+                    if (r < shape.length && c < shape[r].length()) {
                         shapeChar = shape[r].charAt(c);
                     }
 
                     RequiredItem required = (shapeChar != ' ') ? shapedIngredients.get(shapeChar) : null;
 
-                    if (required == null) { // Expect empty slot in recipe's shape
+                    if (required == null) { // Expect empty slot in recipe shape
+                        // If the matrix slot is not empty, it doesn't match
                         if (itemInMatrixSlot != null && itemInMatrixSlot.getType() != Material.AIR) {
-                            // logger.finer("[RecipeCheck]["+id+"] -> Fail: Slot " + matrixIndex + " expected empty, found " + itemInMatrixSlot.getType());
                             return false;
                         }
-                    } else { // Expect specific item based on recipe's shape
+                    } else { // Expect a specific item
+                        // If the requirement doesn't match the item in the slot, it fails
                         if (!required.matches(itemInMatrixSlot)) {
-                            // logger.finer("[RecipeCheck]["+id+"] -> Fail: Slot " + matrixIndex + " requirement not met.");
                             return false;
                         }
                     }
                 }
             }
-            // logger.finer("[RecipeCheck]["+id+"] -> Success: Shaped recipe matches grid.");
+            // If we went through all slots without returning false, it's a match
             return true;
         } else if (type == RecipeType.SHAPELESS) {
-            // TODO: Implement shapeless matching
+            // TODO: Implement shapeless matching logic
             return false;
         }
         return false;
     }
 
     public boolean consumeIngredients(Inventory guiInventory, int[] inputSlotIndices) {
-        if (inputSlotIndices == null || inputSlotIndices.length != 9) return false;
+         if (inputSlotIndices == null || inputSlotIndices.length != 9) return false;
 
         if (type == RecipeType.SHAPED) {
-            // This map will store: GUI Slot Index -> Total Amount to Consume from that GUI Slot
-            Map<Integer, Integer> consumptionPerGuiSlot = new HashMap<>();
+            // Create a map to track consumption per GUI slot index to handle stacked ingredients correctly
+             Map<Integer, Integer> consumptionPerGuiSlot = new HashMap<>();
 
-            for (int r = 0; r < 3; r++) { // Iterate through the 3x3 recipe shape definition
-                for (int c = 0; c < 3; c++) {
-                    char shapeChar = ' ';
-                    if (r < shape.length && c < shape[r].length()) { // Check bounds for recipe.shape
-                        shapeChar = shape[r].charAt(c);
-                    }
+             // Calculate required consumption for each GUI slot based on the recipe shape
+             for (int r = 0; r < 3; r++) {
+                 for (int c = 0; c < 3; c++) {
+                     char shapeChar = ' ';
+                     if (r < shape.length && c < shape[r].length()) {
+                         shapeChar = shape[r].charAt(c);
+                     }
 
-                    if (shapeChar != ' ' && shapedIngredients.containsKey(shapeChar)) {
-                        RequiredItem required = shapedIngredients.get(shapeChar);
-                        int matrixIndex = r * 3 + c; // Conceptual 0-8 index in the 3x3 grid
-                        int actualGuiSlot = inputSlotIndices[matrixIndex]; // Get the actual GUI slot number for this part of the recipe
+                     if (shapeChar != ' ' && shapedIngredients.containsKey(shapeChar)) {
+                         RequiredItem required = shapedIngredients.get(shapeChar);
+                         int matrixIndex = r * 3 + c; // Conceptual 0-8 index
+                         int actualGuiSlot = inputSlotIndices[matrixIndex]; // Map to actual GUI slot
 
-                        // Accumulate amount needed from this specific GUI slot
-                        consumptionPerGuiSlot.put(actualGuiSlot,
-                                consumptionPerGuiSlot.getOrDefault(actualGuiSlot, 0) + required.getAmount());
-                    }
-                }
-            }
+                         // Add the required amount for this part of the recipe to the total needed from that GUI slot
+                         consumptionPerGuiSlot.put(actualGuiSlot,
+                                 consumptionPerGuiSlot.getOrDefault(actualGuiSlot, 0) + required.getAmount());
+                     }
+                 }
+             }
 
-            // Now perform actual consumption from the GUI inventory
-            for (Map.Entry<Integer, Integer> entry : consumptionPerGuiSlot.entrySet()) {
-                int guiSlot = entry.getKey();
-                int amountToConsume = entry.getValue();
-                ItemStack itemInSlot = guiInventory.getItem(guiSlot);
+             // Perform the actual consumption from the GUI inventory
+             for (Map.Entry<Integer, Integer> entry : consumptionPerGuiSlot.entrySet()) {
+                 int guiSlot = entry.getKey();
+                 int amountToConsume = entry.getValue();
+                 ItemStack itemInSlot = guiInventory.getItem(guiSlot);
 
-                if (itemInSlot == null || itemInSlot.getAmount() < amountToConsume) {
-                    // This should ideally be caught by a matches() check before calling consume
-                    logger.severe("[Consume] Recipe '" + id + "': Insufficient item in GUI slot " + guiSlot + " for consumption. Has: " + (itemInSlot != null ? itemInSlot.getAmount() : "null") + ", Needs: " + amountToConsume);
-                    return false;
-                }
-                itemInSlot.setAmount(itemInSlot.getAmount() - amountToConsume);
-                guiInventory.setItem(guiSlot, itemInSlot.getAmount() > 0 ? itemInSlot : null); // Set to null if depleted
-            }
-            // logger.finer("[Consume] Consumed ingredients successfully for SHAPED recipe " + id);
-            return true;
+                 // Double-check if consumption is possible (should have been verified by matches())
+                 if (itemInSlot == null || itemInSlot.getAmount() < amountToConsume) {
+                     log.severe("[Consume Error] Recipe '" + id + "': Insufficient item in GUI slot " + guiSlot + " during consumption! Has: " + (itemInSlot != null ? itemInSlot.getAmount() : "null") + ", Needs: " + amountToConsume);
+                     return false; // Should not happen if matches() was called first
+                 }
+
+                 // Consume the items
+                 itemInSlot.setAmount(itemInSlot.getAmount() - amountToConsume);
+                 // If stack is depleted, set slot to null (or handle container items like buckets)
+                 guiInventory.setItem(guiSlot, itemInSlot.getAmount() > 0 ? itemInSlot : getContainerItem(itemInSlot));
+             }
+             return true; // Consumption successful
         } else if (type == RecipeType.SHAPELESS) {
-            // TODO: Implement shapeless consumption
+            // TODO: Implement shapeless consumption logic
             return false;
         }
         return false;
     }
 
-    // New method for calculateMaxCrafts in CraftingGUIListener
+     // Helper to handle container items like buckets, potion bottles
+    private ItemStack getContainerItem(ItemStack consumedItem) {
+        if (consumedItem == null) return null;
+        Material type = consumedItem.getType();
+        if (type == Material.WATER_BUCKET || type == Material.LAVA_BUCKET || type == Material.MILK_BUCKET || type == Material.POWDER_SNOW_BUCKET) {
+            return new ItemStack(Material.BUCKET);
+        } else if (type.toString().contains("POTION") || type == Material.HONEY_BOTTLE || type == Material.DRAGON_BREATH) {
+            return new ItemStack(Material.GLASS_BOTTLE);
+        } else if (type == Material.MUSHROOM_STEW || type == Material.RABBIT_STEW || type == Material.BEETROOT_SOUP || type == Material.SUSPICIOUS_STEW) {
+             return new ItemStack(Material.BOWL);
+         }
+        // Default: item is fully consumed
+        return null;
+    }
+
+
     public RequiredItem getRequirementForMatrixIndex(int matrixIndex) {
         if (type != RecipeType.SHAPED || matrixIndex < 0 || matrixIndex > 8 || shapedIngredients == null || shape == null) {
             return null;
@@ -210,15 +249,15 @@ public class CustomRecipe {
         int row = matrixIndex / 3;
         int col = matrixIndex % 3;
 
-        if (row >= shape.length || col >= shape[row].length()) { // Check bounds of the defined shape
-            return null; // This part of the 3x3 matrix is outside the recipe's explicit shape (should be empty)
+        if (row >= shape.length || col >= shape[row].length()) {
+            return null; // Outside the defined recipe shape
         }
 
         char ingredientChar = shape[row].charAt(col);
         if (ingredientChar == ' ') {
-            return null; // Space in shape means no item required here
+            return null; // Empty slot in recipe
         }
-        return shapedIngredients.get(ingredientChar);
+        return shapedIngredients.get(ingredientChar); // Can return null if char somehow not in map (shouldn't happen after validation)
     }
 
 
@@ -227,12 +266,12 @@ public class CustomRecipe {
     public RecipeType getType() { return type; }
     public ItemStack getResult() {
         if (itemManager == null) {
-            logger.severe("ItemManager is null in getResult for recipe '" + this.id + "'. Cannot create result item.");
+            log.severe("ItemManager is null in getResult for recipe '" + this.id + "'.");
             return new ItemStack(Material.BARRIER);
         }
         ItemStack resultTemplate = itemManager.getItem(this.resultItemId);
         if (resultTemplate == null) {
-            logger.severe("Item ID '" + this.resultItemId + "' (result for recipe '" + this.id + "') not found in ItemManager!");
+            log.severe("Result Item ID '" + this.resultItemId + "' (for recipe '" + this.id + "') not found in ItemManager!");
             return new ItemStack(Material.BARRIER);
         }
         ItemStack finalResult = resultTemplate.clone();
@@ -240,22 +279,6 @@ public class CustomRecipe {
         return finalResult;
     }
 
-    // This method might be less useful now if CraftingGUIListener directly uses INPUT_SLOTS_ARRAY
-    // and maps to matrix indices for getRequirementForMatrixIndex.
-    @Deprecated
-    public RequiredItem getRequirementForGridSlot(int guiSlotIndex, int[] inputSlotsArray) {
-        if (type != RecipeType.SHAPED || shapedIngredients == null || shape == null) return null;
-        int matrixIndex = -1;
-        for(int i=0; i < inputSlotsArray.length; i++){
-            if(inputSlotsArray[i] == guiSlotIndex){
-                matrixIndex = i;
-                break;
-            }
-        }
-        if(matrixIndex == -1) return null;
-
-        return getRequirementForMatrixIndex(matrixIndex);
-    }
-
     public enum RecipeType { SHAPED, SHAPELESS }
 }
+

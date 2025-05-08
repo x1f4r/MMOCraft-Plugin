@@ -26,14 +26,12 @@ mobs:
     defense: 20
     strength: 15
     speed: 5
-  # Example for your custom Elder Dragon (which is an ENDER_DRAGON entity type)
-  # The SummonElderDragonCommand could apply these or even more specific stats.
-  # This provides a baseline if any ENDER_DRAGON spawns naturally and gets caught by EntitySpawnListener.
   ENDER_DRAGON:
-    maxHealth: 3000.0 # Default for your summoned ones might be higher
+    maxHealth: 3000.0
     defense: 100
-    strength: 35 # For its melee/contact attacks
+    strength: 35
     speed: 10
-    maxMana: 500 # If AI abilities consume mana
+    maxMana: 500
     critChance: 10
     critDamage: 75
+

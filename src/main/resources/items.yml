@@ -104,7 +104,7 @@ items:
       - ""
       - "&6Ability: Dragon's Fury &e&lRIGHT CLICK"
       - "&7Unleash a wave of draconic energy."
-      - "&cNO COOLDOWN"
+      - "&cNO COOLDOWN" # Cooldowns should be handled by ability system, not just lore
       - ""
       - "&cStrength: &f+50"
       - "&cCrit Damage: &f+75%"
@@ -114,12 +114,13 @@ items:
     unbreakable: true
     enchants: { DAMAGE_ALL: 5 , LOOT_BONUS_MOBS: 3 }
     item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
-    attributes: { GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND }
+    attributes: { GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND } # Base vanilla damage
     custom_stats:
       STRENGTH: 50
       CRIT_DAMAGE: 75
       SPEED: 5
-      MANA_COST: 100 # Explicitly MANA_COST for ability
+      MANA_COST: 100 # For the ability
+      ABILITY_ID: "dragon_fury" # Example ability identifier
 
   aspect_of_the_end:
     material: DIAMOND_SWORD
@@ -144,18 +145,19 @@ items:
     custom_stats:
       STRENGTH: 25
       CRIT_CHANCE: 10
-      CRIT_DAMAGE: 25
-      MANA_COST: 50 # Explicitly MANA_COST
+      CRIT_DAMAGE: 25 # Added for completeness
+      MANA_COST: 50
+      ABILITY_ID: "instant_transmission"
 
   # --- End Armor Set ---
   ender_helmet:
     material: DIAMOND_HELMET
     name: "&5Ender Helmet"
     lore:
-      - "&7Health: &a+20"
-      - "&7Defense: &a+35"
+      - "&7Health: &a+20" # This is from vanilla attribute
+      - "&7Defense: &a+35" # This is custom stat
       - ""
-      - "&6Ability: End Amplification"
+      - "&6Full Set Bonus: End Amplification" # Changed to reflect set bonus idea
       - "&7All stats on this armor piece are"
       - "&7multiplied by &c2x &7while on"
       - "&7the End Island!"
@@ -169,7 +171,7 @@ items:
   ender_chestplate:
     material: DIAMOND_CHESTPLATE
     name: "&5Ender Chestplate"
-    lore: ["&7Health: &a+30", "&7Defense: &a+60", "", "&6Ability: End Amplification", "", "&5&lEPIC CHESTPLATE"]
+    lore: ["&7Health: &a+30", "&7Defense: &a+60", "", "&6Full Set Bonus: End Amplification", "", "&5&lEPIC CHESTPLATE"]
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes: { GENERIC_MAX_HEALTH: 30.0:ADD_NUMBER:CHEST }
@@ -178,7 +180,7 @@ items:
   ender_leggings:
     material: DIAMOND_LEGGINGS
     name: "&5Ender Leggings"
-    lore: ["&7Health: &a+25", "&7Defense: &a+50", "", "&6Ability: End Amplification", "", "&5&lEPIC LEGGINGS"]
+    lore: ["&7Health: &a+25", "&7Defense: &a+50", "", "&6Full Set Bonus: End Amplification", "", "&5&lEPIC LEGGINGS"]
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes: { GENERIC_MAX_HEALTH: 25.0:ADD_NUMBER:LEGS }
@@ -187,7 +189,7 @@ items:
   ender_boots:
     material: DIAMOND_BOOTS
     name: "&5Ender Boots"
-    lore: ["&7Health: &a+15", "&7Defense: &a+25", "", "&6Ability: End Amplification", "", "&5&lEPIC BOOTS"]
+    lore: ["&7Health: &a+15", "&7Defense: &a+25", "", "&6Full Set Bonus: End Amplification", "", "&5&lEPIC BOOTS"]
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes: { GENERIC_MAX_HEALTH: 15.0:ADD_NUMBER:FEET }
@@ -205,17 +207,18 @@ items:
       - "&7Fires arrows instantly without drawing."
       - "&7Consumes no arrows."
       - ""
-      - "&cPower: &fExceptional (Base damage multiplier x6)"
+      - "&cPower: &fExceptional (Base damage multiplier x6)" # This is custom logic
       - "&bShooting Speed: &e+100 &7(Faster fire rate & projectile speed)"
       - "&7Unbreakable"
     unbreakable: true
-    item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ] # Hide vanilla enchants/attributes
+    item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     custom_stats:
-      TREE_BOW_POWER: 6        # Damage multiplier for its arrows
-      TREE_BOW_MAGICAL_AMMO: 1 # 1 = true (doesn't consume arrows)
-      INSTANT_SHOOT_BOW: 1     # 1 = true (enables right-click instant fire)
-      SHOOTING_SPEED: 100      # Higher = faster fire rate and faster projectiles
-      # MANA_COST: 5           # Optional: Add mana cost per shot
+      TREE_BOW_POWER: 6        # Custom NBT for damage calculation
+      TREE_BOW_MAGICAL_AMMO: 1 # Custom NBT: 1 = true
+      INSTANT_SHOOT_BOW: 1     # Custom NBT: 1 = true for PlayerAbilityListener
+      SHOOTING_SPEED: 100      # Custom stat affecting fire rate/projectile speed
+      # MANA_COST: 5           # Optional
+      ABILITY_ID: "instant_shot_bow"
 
   # --- Example Fishing Rod ---
   master_angler_rod:
@@ -229,4 +232,5 @@ items:
     unbreakable: true
     item_flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
     custom_stats:
-      FISHING_SPEED: 100 # Should significantly reduce wait time / increase Lure
+      FISHING_SPEED: 100
+

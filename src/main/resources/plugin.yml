@@ -1,65 +1,48 @@
-name: mmocraft
-version: '1.0-SNAPSHOT' # Consider updating version as you make significant changes
-main: io.github.x1f4r.mmocraft.MMOCraft
-api-version: '1.20' # Or your target server version, ensure Paper API for some features
+name: MMOCraft
+version: '1.1-REFACTORED'
+main: io.github.x1f4r.mmocraft.core.MMOPlugin
+api-version: '1.20'
 authors: [x1f4r]
-description: Custom items, recipes, mobs, and advanced player/entity stats.
+description: Refactored MMO Engine.
 
 commands:
   customcraft:
     description: Opens the custom MMO crafting GUI.
     usage: /<command>
     aliases: [mcraft, mmoc]
-    permission: mmocraft.command.craft # Added permission node
-
+    permission: mmocraft.command.craft
   summonelderdragon:
     description: Summons a powerful Elder Dragon.
     usage: /<command>
     permission: mmocraft.command.summon.elderdragon
-    permission-message: You do not have permission to summon the Elder Dragon.
-
   givecustomitem:
     description: Gives a custom item from MMOCraft.
     usage: /<command> <item_id> [amount] [player]
     aliases: [mmogive, mcgive]
     permission: mmocraft.command.givecustomitem
-    permission-message: You do not have permission to use this command.
-
   stats:
     description: Displays your current MMOCraft stats.
     usage: /<command>
     aliases: [mystats, mmostats]
-    permission: mmocraft.command.stats # Added permission node
-
+    permission: mmocraft.command.stats
   reloadmobs:
     description: Reloads the mobs.yml configuration.
     usage: /<command>
     permission: mmocraft.command.reloadmobs
-    permission-message: You do not have permission to use this command.
-
-  mmoadmin: # NEW ADMIN COMMAND
+  mmoadmin:
     description: Admin commands for managing MMOCraft player stats.
-    usage: /<command> stat <health|mana> <current|max> <set|add|remove> <player> <amount>
+    usage: |
+      /<command> stat health current <set|add|remove> <player> <amount>
+      /<command> stat health max <set|add|remove> <player> <amount>
+      /<command> stat mana current <set|add|remove> <player> <amount>
+      /<command> stat mana max <set|add|remove> <player> <amount>
     permission: mmocraft.command.adminstats
-    permission-message: You do not have permission to use this command.
-
 
 permissions:
-  mmocraft.command.craft:
-    description: Allows usage of the /customcraft command.
-    default: true
-  mmocraft.command.summon.elderdragon:
-    description: Allows summoning the Elder Dragon.
-    default: op
-  mmocraft.command.givecustomitem:
-    description: Allows usage of the /givecustomitem command.
-    default: op
-  mmocraft.command.stats:
-    description: Allows players to view their own MMOCraft stats.
-    default: true
-  mmocraft.command.reloadmobs:
-    description: Allows usage of the /reloadmobs command.
-    default: op
-  mmocraft.command.adminstats: # NEW PERMISSION
-    description: Allows usage of the /mmoadmin command for stat manipulation.
-    default: op
+  mmocraft.command.craft: {default: true}
+  mmocraft.command.summon.elderdragon: {default: op}
+  mmocraft.command.givecustomitem: {default: op}
+  mmocraft.command.stats: {default: true}
+  mmocraft.command.reloadmobs: {default: op}
+  mmocraft.command.adminstats: {default: op}
+

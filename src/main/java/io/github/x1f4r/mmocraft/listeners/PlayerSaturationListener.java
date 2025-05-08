@@ -1,25 +1,31 @@
-// Corrected package to match the import in MMOCraft.java
-package io.github.x1f4r.mmocraft.player.listeners;
+package io.github.x1f4r.mmocraft.listeners; // Correct package
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 
+/**
+ * Listener to disable vanilla hunger/saturation decay.
+ */
 public class PlayerSaturationListener implements Listener {
+
+    // No MMOCore needed if it just performs a simple action
 
     @EventHandler
     public void onFoodLevelChange(FoodLevelChangeEvent event) {
         if (event.getEntity() instanceof Player) {
             Player player = (Player) event.getEntity();
-            // Always keep food level and saturation full to effectively disable hunger
+            // Option 1: Force full food/saturation always
             event.setFoodLevel(20);
             player.setSaturation(20f);
-            // Alternatively, to just prevent level drop but allow eating for effects (if any):
-            // if (event.getFoodLevel() < player.getFoodLevel()) { // If food level is trying to decrease
+
+            // Option 2: Only cancel food level decrease, allow eating for effects
+            // if (event.getFoodLevel() < player.getFoodLevel()) {
             //    event.setCancelled(true);
-            //    player.setFoodLevel(20); // Keep it topped up
-            //    player.setSaturation(20f); // Keep saturation high
+            //    // Optionally keep topped up
+            //    // player.setFoodLevel(20);
+            //    // player.setSaturation(20f);
             // }
         }
     }

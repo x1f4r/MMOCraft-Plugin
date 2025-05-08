@@ -1,81 +1,76 @@
 package io.github.x1f4r.mmocraft.utils;
 
-import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import org.bukkit.NamespacedKey;
+import java.util.logging.Logger;
 
 public final class NBTKeys {
 
-    private static MMOCraft plugin;
+    private static MMOPlugin pluginInstance;
+    private static Logger log;
 
-    // Item Identification
     public static NamespacedKey ITEM_ID_KEY;
-
-    // Mob Identification
     public static NamespacedKey MOB_TYPE_KEY;
-
-    // Custom Combat/Resource Stats
     public static NamespacedKey STRENGTH_KEY;
     public static NamespacedKey CRIT_CHANCE_KEY;
     public static NamespacedKey CRIT_DAMAGE_KEY;
-    public static NamespacedKey MANA_KEY; // General mana stat, can be max_mana bonus or mana_cost
-    public static NamespacedKey MANA_COST_KEY; // Specifically for ability mana costs on items
-    public static NamespacedKey SPEED_KEY; // Player movement speed
+    public static NamespacedKey MANA_KEY;
+    public static NamespacedKey MANA_COST_KEY;
+    public static NamespacedKey SPEED_KEY;
     public static NamespacedKey DEFENSE_KEY;
-
-    // Damage Flags
     public static NamespacedKey TRUE_DAMAGE_FLAG_KEY;
-
-    // Tree Bow Specific Keys (Original)
     public static NamespacedKey TREE_BOW_POWER_KEY;
     public static NamespacedKey TREE_BOW_MAGICAL_AMMO_KEY;
-
-    // Projectile Specific Keys
     public static NamespacedKey PROJECTILE_DAMAGE_MULTIPLIER_KEY;
-    public static NamespacedKey PROJECTILE_SOURCE_BOW_TYPE_KEY;
-
-    // Custom Tool Speed Stats
+    public static NamespacedKey PROJECTILE_SOURCE_ITEM_ID_KEY;
     public static NamespacedKey MINING_SPEED_KEY;
     public static NamespacedKey FORAGING_SPEED_KEY;
     public static NamespacedKey FISHING_SPEED_KEY;
-    public static NamespacedKey SHOOTING_SPEED_KEY;  // Affects bow projectile velocity AND fire rate for instant bows
+    public static NamespacedKey SHOOTING_SPEED_KEY;
+    public static NamespacedKey INSTANT_SHOOT_BOW_TAG;
+    public static NamespacedKey ABILITY_ID_KEY;
 
-    // Bow Mechanic Tags
-    public static NamespacedKey INSTANT_SHOOT_BOW_TAG; // Tag for bows that shoot instantly on right click
-
-    public static void init(MMOCraft pluginInstance) {
-        if (NBTKeys.plugin != null) {
-            return; // Already initialized
+    public static void init(MMOPlugin plugin) {
+        if (NBTKeys.pluginInstance != null) {
+            MMOPlugin.getMMOLogger().warning("NBTKeys already initialized!");
+            return;
         }
-        NBTKeys.plugin = pluginInstance;
+        NBTKeys.pluginInstance = plugin;
+        NBTKeys.log = MMOPlugin.getMMOLogger();
 
-        ITEM_ID_KEY = new NamespacedKey(plugin, "mmo_item_id");
-        MOB_TYPE_KEY = new NamespacedKey(plugin, "mmo_mob_type");
+        ITEM_ID_KEY = createKey("item_id");
+        MOB_TYPE_KEY = createKey("mob_type");
+        STRENGTH_KEY = createKey("strength");
+        CRIT_CHANCE_KEY = createKey("crit_chance");
+        CRIT_DAMAGE_KEY = createKey("crit_damage");
+        MANA_KEY = createKey("mana_stat");
+        MANA_COST_KEY = createKey("mana_cost");
+        SPEED_KEY = createKey("speed");
+        DEFENSE_KEY = createKey("defense");
+        TRUE_DAMAGE_FLAG_KEY = createKey("true_damage_flag");
+        TREE_BOW_POWER_KEY = createKey("tree_bow_power");
+        TREE_BOW_MAGICAL_AMMO_KEY = createKey("tree_bow_magical_ammo");
+        PROJECTILE_DAMAGE_MULTIPLIER_KEY = createKey("projectile_damage_multiplier");
+        PROJECTILE_SOURCE_ITEM_ID_KEY = createKey("projectile_source_item_id");
+        MINING_SPEED_KEY = createKey("mining_speed");
+        FORAGING_SPEED_KEY = createKey("foraging_speed");
+        FISHING_SPEED_KEY = createKey("fishing_speed");
+        SHOOTING_SPEED_KEY = createKey("shooting_speed");
+        INSTANT_SHOOT_BOW_TAG = createKey("instant_shoot_bow_tag");
+        ABILITY_ID_KEY = createKey("ability_id");
 
-        STRENGTH_KEY = new NamespacedKey(plugin, "mmo_strength");
-        CRIT_CHANCE_KEY = new NamespacedKey(plugin, "mmo_crit_chance");
-        CRIT_DAMAGE_KEY = new NamespacedKey(plugin, "mmo_crit_damage");
-        MANA_KEY = new NamespacedKey(plugin, "mmo_mana_stat"); // Used for MAX_MANA bonus from items
-        MANA_COST_KEY = new NamespacedKey(plugin, "mmo_mana_cost"); // Used for ability costs on items
-        SPEED_KEY = new NamespacedKey(plugin, "mmo_speed");
-        DEFENSE_KEY = new NamespacedKey(plugin, "mmo_defense");
+        log.info("NBTKeys initialized.");
+    }
 
-        TRUE_DAMAGE_FLAG_KEY = new NamespacedKey(plugin, "mmo_true_damage_flag");
-
-        TREE_BOW_POWER_KEY = new NamespacedKey(plugin, "mmo_tree_bow_power");
-        TREE_BOW_MAGICAL_AMMO_KEY = new NamespacedKey(plugin, "mmo_tree_bow_magical_ammo");
-
-        PROJECTILE_DAMAGE_MULTIPLIER_KEY = new NamespacedKey(plugin, "mmo_projectile_damage_multiplier");
-        PROJECTILE_SOURCE_BOW_TYPE_KEY = new NamespacedKey(plugin, "mmo_projectile_source_bow_type");
-
-        MINING_SPEED_KEY = new NamespacedKey(plugin, "mmo_mining_speed");
-        FORAGING_SPEED_KEY = new NamespacedKey(plugin, "mmo_foraging_speed");
-        FISHING_SPEED_KEY = new NamespacedKey(plugin, "mmo_fishing_speed");
-        SHOOTING_SPEED_KEY = new NamespacedKey(plugin, "mmo_shooting_speed");
-
-        INSTANT_SHOOT_BOW_TAG = new NamespacedKey(plugin, "mmo_instant_shoot_bow");
+    private static NamespacedKey createKey(String keyName) {
+        if (pluginInstance == null) {
+            throw new IllegalStateException("NBTKeys.init() must be called before creating keys!");
+        }
+        return new NamespacedKey(pluginInstance, "mmo_" + keyName);
     }
 
     private NBTKeys() {
-        throw new IllegalStateException("Utility class. Use NBTKeys.init(plugin) to initialize.");
+        throw new IllegalStateException("Utility class.");
     }
 }
+

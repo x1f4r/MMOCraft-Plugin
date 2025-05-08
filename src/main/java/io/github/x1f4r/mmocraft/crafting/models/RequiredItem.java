@@ -1,34 +1,37 @@
-package io.github.x1f4r.mmocraft.crafting.models; // Updated package
+package io.github.x1f4r.mmocraft.crafting.models;
 
-import java.util.Map;
-import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.core.MMOPlugin;
+import io.github.x1f4r.mmocraft.utils.NBTKeys; // If checking custom item ingredients later
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.inventory.ItemStack;
-// import java.util.Map; // Keep if used, commented if not
-import java.util.logging.Logger; // Keep if used
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+
+import java.util.Map;
+import java.util.logging.Logger;
 
 public class RequiredItem {
 
     private final IngredientType type;
     private final Material material; // Used if type is MATERIAL
     private final Tag<Material> tag; // Used if type is TAG
+    private final String customItemId; // Used if type is CUSTOM_ITEM
     private final int amount;
-    // private final String customItemId; // For future use: if an ingredient must be a specific custom item
+    private static final Logger log = MMOPlugin.getMMOLogger();
 
-    private static final Logger logger = MMOCraft.getPlugin(MMOCraft.class).getLogger();
-
-    private RequiredItem(IngredientType type, Material material, Tag<Material> tag, int amount) {
+    private RequiredItem(IngredientType type, Material material, Tag<Material> tag, String customItemId, int amount) {
         this.type = type;
         this.material = material;
         this.tag = tag;
+        this.customItemId = customItemId; // Can be null
         this.amount = amount;
     }
 
-    public static RequiredItem loadFromConfig(MMOCraft plugin, ConfigurationSection config, Map<String, Tag<Material>> customMaterialTags) {
+    public static RequiredItem loadFromConfig(ConfigurationSection config, Map<String, Tag<Material>> customMaterialTags) {
         if (config == null) {
-            logger.warning("RequiredItem config section is null.");
+            log.warning("RequiredItem config section is null.");
             return null;
         }
 
@@ -37,22 +40,23 @@ public class RequiredItem {
         int amount = config.getInt("amount", 1);
 
         if (valueStr == null || valueStr.isEmpty()) {
-            logger.warning("Missing 'value' in required item config: " + config.getCurrentPath());
+            log.warning("Missing 'value' in required item config: " + config.getCurrentPath());
             return null;
         }
         if (amount < 1) {
-            logger.warning("Invalid 'amount' (" + amount + ") in required item config, must be at least 1: " + config.getCurrentPath());
-            return null;
+            log.warning("Invalid 'amount' (" + amount + ") in required item config, must be at least 1: " + config.getCurrentPath());
+            amount = 1; // Default to 1 if invalid
         }
 
         IngredientType ingredientType;
         Material material = null;
         Tag<Material> tag = null;
+        String customItemId = null;
 
         try {
             ingredientType = IngredientType.valueOf(typeStr);
         } catch (IllegalArgumentException e) {
-            logger.warning("Invalid ingredient type '" + typeStr + "' in config: " + config.getCurrentPath() + ". Defaulting to MATERIAL.");
+            log.warning("Invalid ingredient type '" + typeStr + "' in config: " + config.getCurrentPath() + ". Defaulting to MATERIAL.");
             ingredientType = IngredientType.MATERIAL;
         }
 
@@ -60,37 +64,31 @@ public class RequiredItem {
             case MATERIAL:
                 material = Material.matchMaterial(valueStr.toUpperCase());
                 if (material == null) {
-                    logger.warning("Invalid material '" + valueStr + "' for required item in config: " + config.getCurrentPath());
+                    log.warning("Invalid material '" + valueStr + "' for required item in config: " + config.getCurrentPath());
                     return null;
                 }
                 break;
             case TAG:
-                tag = customMaterialTags.get(valueStr.toUpperCase()); // Use the passed custom tags
+                tag = customMaterialTags.get(valueStr.toUpperCase());
                 if (tag == null) {
-                    // Check Bukkit tags as a fallback if you want, but usually custom tags are specific
-                    // tag = Bukkit.getTag(Tag.REGISTRY_ITEMS, NamespacedKey.minecraft(valueStr.toLowerCase()), Material.class);
-                    // if (tag == null) {
-                        logger.warning("Unknown material tag '" + valueStr + "' for required item in config: " + config.getCurrentPath() + ". Ensure it's defined in RecipeManager or is a valid Bukkit tag if supported.");
-                        return null;
-                    // }
+                     log.warning("Unknown material tag '" + valueStr + "' for required item in config: " + config.getCurrentPath() + ". Ensure it's defined in RecipeManager.");
+                     return null;
                 }
                 break;
-            // case CUSTOM_ITEM: // Future
-            //     customItemId = valueStr;
-            //     break;
+            case CUSTOM_ITEM:
+                // valueStr should be the custom item ID (e.g., "aspect_of_the_end")
+                customItemId = valueStr.toLowerCase();
+                // Validation that this item ID exists could happen here or in RecipeManager/ItemManager if needed
+                break;
             default:
-                logger.warning("Unsupported ingredient type '" + ingredientType + "' after parsing for config: " + config.getCurrentPath());
+                log.warning("Unsupported ingredient type '" + ingredientType + "' after parsing for config: " + config.getCurrentPath());
                 return null;
         }
-        return new RequiredItem(ingredientType, material, tag, amount);
+        return new RequiredItem(ingredientType, material, tag, customItemId, amount);
     }
 
     public boolean matches(ItemStack item) {
-        // String requiredInfo = (this.type == IngredientType.MATERIAL) ? (this.material != null ? this.material.name() : "NULL_MATERIAL") : (this.tag != null ? "Tag:" + this.tag.getKey().getKey() : "NULL_TAG");
-        // logger.finer("    [ReqCheck] Item: " + (item != null ? item.getType() : "NULL_ITEM") + " vs Req: " + requiredInfo + " Amount: " + this.amount);
-
         if (item == null || item.getType() == Material.AIR) {
-            // logger.finer("    [ReqCheck] -> Fail: Item slot is empty or AIR.");
             return false; // Requires something, but slot is empty
         }
 
@@ -102,37 +100,37 @@ public class RequiredItem {
             case TAG:
                 typeMatch = (this.tag != null && this.tag.isTagged(item.getType()));
                 break;
-            // case CUSTOM_ITEM: // Future
-            //     if (item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING)) {
-            //         String itemIdVal = item.getItemMeta().getPersistentDataContainer().get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
-            //         typeMatch = this.customItemId.equalsIgnoreCase(itemIdVal);
-            //     }
-            //     break;
+            case CUSTOM_ITEM:
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null && NBTKeys.ITEM_ID_KEY != null) {
+                    String itemIdVal = meta.getPersistentDataContainer().get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
+                    typeMatch = this.customItemId.equalsIgnoreCase(itemIdVal);
+                }
+                break;
             default:
-                // logger.finer("    [ReqCheck] -> Fail: Unknown requirement type during match.");
                 return false;
         }
 
         if (!typeMatch) {
-            // logger.finer("    [ReqCheck] -> Fail: Type mismatch (Required: " + requiredInfo + ", Found: " + item.getType() + ")");
             return false;
         }
 
+        // Amount check
         if (item.getAmount() < this.amount) {
-            // logger.finer("    [ReqCheck] -> Fail: Amount mismatch for " + item.getType() + " (Required: " + this.amount + ", Found: " + item.getAmount() + ")");
             return false;
         }
 
-        // TODO: Add NBT/meta check later if ingredients need specific custom item properties beyond type/tag
-        // logger.finer("    [ReqCheck] -> Success: Item " + item.getType() + " matches requirement.");
+        // TODO: Add more complex NBT/meta checks if needed in the future
         return true;
     }
 
     // Getters
     public int getAmount() { return amount; }
     public IngredientType getType() { return type; }
-    public Material getMaterial() { return material; } // Can be null if type is TAG
-    public Tag<Material> getTag() { return tag; }       // Can be null if type is MATERIAL
+    public Material getMaterial() { return material; } // Can be null
+    public Tag<Material> getTag() { return tag; }       // Can be null
+    public String getCustomItemId() { return customItemId; } // Can be null
 
-    public enum IngredientType { MATERIAL, TAG /*, CUSTOM_ITEM */ } // CUSTOM_ITEM for future
+    public enum IngredientType { MATERIAL, TAG, CUSTOM_ITEM }
 }
+

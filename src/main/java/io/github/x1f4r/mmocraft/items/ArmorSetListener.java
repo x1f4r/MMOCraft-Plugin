@@ -1,86 +1,83 @@
-package io.github.x1f4r.mmocraft.items;
+package io.github.x1f4r.mmocraft.items; // Keep in items package
 
-import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.core.MMOCore;
+import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerToggleSneakEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent; // Example trigger
+// Could also use a repeating task in PlayerStatsManager or a dedicated ArmorManager
+// to check equipped sets periodically or on equip events.
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-// Removed Cooldown related imports:
-// import java.util.HashMap;
-// import java.util.Map;
-// import java.util.UUID;
 import java.util.logging.Logger;
 
 public class ArmorSetListener implements Listener {
 
-    private final MMOCraft plugin;
-    // Removed Cooldown Map:
-    // private final Map<UUID, Long> sneakCooldown = new HashMap<>();
-    // private final long COOLDOWN_MILLIS = 5000; // 5 seconds
-    private static final Logger logger = MMOCraft.getPlugin(MMOCraft.class).getLogger();
+    private final MMOCore core;
+    private final MMOPlugin plugin;
+    private final Logger log;
 
+    // Define item IDs for armor sets
     private static final String TREE_HELMET_ID = "tree_helmet";
     private static final String TREE_CHESTPLATE_ID = "tree_chestplate";
     private static final String TREE_LEGGINGS_ID = "tree_leggings";
     private static final String TREE_BOOTS_ID = "tree_boots";
 
-    public ArmorSetListener(MMOCraft plugin) {
-        this.plugin = plugin;
+    // Add IDs for other sets like Ender Armor if they have set bonuses
+    private static final String ENDER_HELMET_ID = "ender_helmet";
+    // ... etc.
+
+    public ArmorSetListener(MMOCore core) {
+        this.core = core;
+        this.plugin = core.getPlugin();
+        this.log = MMOPlugin.getMMOLogger();
     }
 
+    // Example: Triggering a set bonus on sneak (like the original Tree Armor)
     @EventHandler
     public void onPlayerToggleSneak(PlayerToggleSneakEvent event) {
         if (!event.isSneaking()) return; // Only trigger when starting to sneak
 
         Player player = event.getPlayer();
-        // UUID playerUUID = player.getUniqueId(); // Not needed without cooldown
 
-        // COOLDOWN CHECK REMOVED
-        // long currentTime = System.currentTimeMillis();
-        // long lastSneakTime = sneakCooldown.getOrDefault(playerUUID, 0L);
-        // if (currentTime - lastSneakTime < COOLDOWN_MILLIS) {
-        //     return;
-        // }
-
-        if (!isWearingFullTreeSet(player)) {
+        // Check for Tree Set Bonus
+        if (isWearingFullSet(player, TREE_HELMET_ID, TREE_CHESTPLATE_ID, TREE_LEGGINGS_ID, TREE_BOOTS_ID)) {
+            log.finer(player.getName() + " triggered Tree Armor sneak ability!");
+            // Ability: Drop an apple (Example)
+            ItemStack apple = new ItemStack(Material.APPLE, 1);
+            player.getWorld().dropItemNaturally(player.getLocation(), apple);
+            player.playSound(player.getLocation(), Sound.ENTITY_CHICKEN_EGG, 0.5f, 1.0f);
+            // Prevent other set bonuses from triggering on the same sneak event if needed
             return;
         }
 
-        // logger.info(player.getName() + " triggered Tree Armor sneak ability!"); // Optional: keep for debugging
-        // COOLDOWN SETTING REMOVED
-        // sneakCooldown.put(playerUUID, currentTime);
-
-        // Ability: Drop an apple
-        ItemStack apple = new ItemStack(Material.APPLE, 1);
-        player.getWorld().dropItemNaturally(player.getLocation(), apple);
-        player.playSound(player.getLocation(), Sound.ENTITY_CHICKEN_EGG, 0.5f, 1.0f);
+        // Check for other set bonuses here...
+        // if (isWearingFullSet(player, ENDER_HELMET_ID, ... )) {
+        //    // Apply Ender set bonus effect on sneak? (Example)
+        //    return;
+        // }
     }
 
-    private boolean isWearingFullTreeSet(Player player) {
+    // Helper method to check if a player is wearing a specific full set
+    private boolean isWearingFullSet(Player player, String helmetId, String chestplateId, String leggingsId, String bootsId) {
         PlayerInventory inventory = player.getInventory();
-        ItemStack helmet = inventory.getHelmet();
-        ItemStack chestplate = inventory.getChestplate();
-        ItemStack leggings = inventory.getLeggings();
-        ItemStack boots = inventory.getBoots();
-
-        if (!isTreeArmorPiece(helmet, TREE_HELMET_ID)) return false;
-        if (!isTreeArmorPiece(chestplate, TREE_CHESTPLATE_ID)) return false;
-        if (!isTreeArmorPiece(leggings, TREE_LEGGINGS_ID)) return false;
-        if (!isTreeArmorPiece(boots, TREE_BOOTS_ID)) return false;
-
-        return true;
+        if (!isSpecificArmorPiece(inventory.getHelmet(), helmetId)) return false;
+        if (!isSpecificArmorPiece(inventory.getChestplate(), chestplateId)) return false;
+        if (!isSpecificArmorPiece(inventory.getLeggings(), leggingsId)) return false;
+        if (!isSpecificArmorPiece(inventory.getBoots(), bootsId)) return false;
+        return true; // All pieces match
     }
 
-    private boolean isTreeArmorPiece(ItemStack item, String expectedId) {
+    // Helper method to check if an ItemStack is a specific custom armor piece
+    private boolean isSpecificArmorPiece(ItemStack item, String expectedId) {
         if (item == null || item.getType() == Material.AIR) return false;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return false;
@@ -92,4 +89,9 @@ public class ArmorSetListener implements Listener {
         }
         return false;
     }
+
+    // Note: For passive set bonuses (like stat boosts), the logic is typically handled
+    // within the PlayerStatsManager during the equipment calculation phase, checking
+    // if a full set is worn there. This listener is more for active/triggered effects.
 }
+
