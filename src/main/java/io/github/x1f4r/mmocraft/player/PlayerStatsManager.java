@@ -34,6 +34,7 @@ public class PlayerStatsManager {
     private final Map<UUID, AttributeModifier> speedModifiers = new HashMap<>();
     private static final String SPEED_MODIFIER_UUID_NAMESPACE = "mmocraft_speed_modifier_v2";
 
+    // Ender Health Bonus UUIDs remain the same
     private static final UUID ENDER_HELMET_HEALTH_BONUS_UUID = UUID.fromString("7a6a2fb6-bedd-4ccb-856e-dd85f78b7cb6");
     private static final UUID ENDER_CHESTPLATE_HEALTH_BONUS_UUID = UUID.fromString("eb367bca-b1e5-41a1-b8cc-ed65e59d84b0");
     private static final UUID ENDER_LEGGINGS_HEALTH_BONUS_UUID = UUID.fromString("9914ed32-fbab-4c18-a2da-7474b9cd5881");
@@ -41,10 +42,7 @@ public class PlayerStatsManager {
     private static final Map<EquipmentSlot, UUID> enderHealthBonusUuids = new HashMap<>();
     private static final EquipmentSlot[] equipmentSlotsArray = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
-    // MODIFIED: New UUID for health capping. Replace placeholder with a real UUID.
-    private static final UUID HEALTH_CAP_MODIFIER_UUID = UUID.fromString("YOUR_UNIQUE_UUID_HERE_HEALTH_CAP");
-
-
+    // Regen config remains the same
     private final double healthRegenPercentage = 0.020;
     private final double minHealthRegenAmount = 0.5;
     private final long healthRegenIntervalTicks = 20L;
@@ -66,27 +64,27 @@ public class PlayerStatsManager {
         startHealthRegenTask();
         startStatRefreshTask();
         startManaBarUpdateTask();
-        if (HEALTH_CAP_MODIFIER_UUID.toString().equals("YOUR_UNIQUE_UUID_HERE_HEALTH_CAP")) {
-            plugin.getLogger().warning("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            plugin.getLogger().warning("WARNING: HEALTH_CAP_MODIFIER_UUID is using a placeholder value!");
-            plugin.getLogger().warning("Please generate a unique UUID and update it in PlayerStatsManager.java.");
-            plugin.getLogger().warning("You can use your AutoUUIDReplace.ps1 script if configured for it.");
-            plugin.getLogger().warning("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-        }
     }
 
     public PlayerStats getStats(Player player) {
         if (player == null || !player.isOnline()) {
             return PlayerStats.base();
         }
+        // Ensures a base PlayerStats object exists in the cache for the player
         return playerStatsCache.computeIfAbsent(player.getUniqueId(), uuid -> PlayerStats.base());
     }
 
+    /**
+     * Recalculates only the stat contributions from the player's equipment
+     * and updates the equipment fields in the PlayerStats object.
+     * Base stats remain untouched here.
+     */
     private void updateEquipmentContributions(Player player, PlayerStats stats) {
         if (player == null || !player.isOnline() || stats == null) return;
 
         PlayerInventory inventory = player.getInventory();
 
+        // FIX: Reset EQUIPMENT contributions to 0 using the correct setters
         stats.setEquipmentStrength(0);
         stats.setEquipmentCritChance(0);
         stats.setEquipmentCritDamage(0);
@@ -98,6 +96,7 @@ public class PlayerStatsManager {
         stats.setEquipmentFishingSpeed(0);
         stats.setEquipmentShootingSpeed(0);
 
+        // Accumulate stats from armor and held items into equipment fields
         ItemStack[] armor = inventory.getArmorContents();
         for (ItemStack item : armor) {
             accumulateEquipmentStatsFromItem(player, item, stats);
@@ -105,73 +104,39 @@ public class PlayerStatsManager {
         accumulateEquipmentStatsFromItem(player, inventory.getItemInMainHand(), stats);
         // accumulateEquipmentStatsFromItem(player, inventory.getItemInOffHand(), stats); // Optional
 
+        // Clamp current mana against the NEW total max mana (base + equipment) after calculation
         stats.setCurrentMana(stats.getCurrentMana());
     }
 
     /**
      * Updates the player's stats based on equipment and applies necessary effects
-     * like speed modifiers, health attribute changes, and health-to-absorption conversion.
+     * like speed modifiers and health attribute changes.
      */
     public void updateAndApplyAllEffects(Player player) {
         if (player == null || !player.isOnline()) return;
 
-        PlayerStats stats = getStats(player);
-        updateEquipmentContributions(player, stats);
+        PlayerStats stats = getStats(player); // Get the cached PlayerStats object
+        updateEquipmentContributions(player, stats); // Recalculate equipment bonuses
 
-        applySpeedModifier(player, stats.getSpeed());
-        applyEnderHealthBonus(player); // Applies health bonuses from Ender armor
+        // Apply effects based on the TOTAL calculated stats (base + equipment)
+        applySpeedModifier(player, stats.getSpeed()); // Uses total speed stat
+        applyEnderHealthBonus(player); // Handles vanilla health attribute based on Ender armor
 
-        // --- Health to Absorption Logic ---
-        AttributeInstance healthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-        if (healthAttribute != null) {
-            // Remove our specific health cap modifier first to get the true potential max health
-            // from all other sources (base, Ender armor, etc.)
-            removeModifier(healthAttribute, HEALTH_CAP_MODIFIER_UUID);
-
-            double currentPotentialMaxHealth = healthAttribute.getValue();
-            double healthThreshold = 40.0; // Max 2 rows of red hearts (20 hearts * 2 HP/heart)
-            double maxAbsorptionFromConversion = 20.0; // Max 1 row of yellow hearts (10 hearts * 2 HP/heart)
-
-            if (currentPotentialMaxHealth > healthThreshold) {
-                double healthToReduceToReachThreshold = currentPotentialMaxHealth - healthThreshold;
-
-                AttributeModifier capModifier = new AttributeModifier(
-                        HEALTH_CAP_MODIFIER_UUID,
-                        "MMOCraftHealthCap",
-                        -healthToReduceToReachThreshold, // Negative modifier to bring health down to the threshold
-                        AttributeModifier.Operation.ADD_NUMBER
-                );
-
-                // Apply the capping modifier (ensuring it's not duplicated if already present for some reason)
-                if (!hasModifier(healthAttribute, HEALTH_CAP_MODIFIER_UUID)) {
-                    healthAttribute.addModifier(capModifier);
-                }
-
-                // Calculate absorption to give (excess health, up to the defined max absorption)
-                double absorptionToApply = Math.min(healthToReduceToReachThreshold, maxAbsorptionFromConversion);
-                player.setAbsorptionAmount(absorptionToApply);
-
-            } else {
-                // Health is at or below the threshold.
-                // Our HEALTH_CAP_MODIFIER_UUID should have already been removed (or was never applied this tick).
-                // We do not explicitly remove absorption here; absorption from other sources
-                // (like golden apples) or absorption that was previously granted by this system
-                // will persist and decay naturally according to vanilla mechanics.
-                // If the player previously had absorption from this system and their max health
-                // drops below the threshold (e.g. removing armor), they keep the absorption
-                // until it's used or decays.
-            }
-
-            // Ensure player's current health doesn't exceed their new (potentially capped) max health attribute
-            double newActualMaxHealth = healthAttribute.getValue();
-            if (player.getHealth() > newActualMaxHealth) {
-                player.setHealth(newActualMaxHealth);
+        // Ensure player's current health doesn't exceed their max health attribute
+        AttributeInstance maxHealthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        if (maxHealthAttribute != null) {
+            double newMaxHealth = maxHealthAttribute.getValue();
+            if (player.getHealth() > newMaxHealth) {
+                player.setHealth(newMaxHealth);
             }
         }
-        // Current mana is clamped within PlayerStats object via its setters and getMaxMana()
+        // Current mana is clamped within updateEquipmentContributions
     }
 
-
+    /**
+     * Reads stats from a single item's NBT and adds them to the
+     * appropriate EQUIPMENT bonus fields in the PlayerStats object.
+     */
     private void accumulateEquipmentStatsFromItem(Player player, ItemStack item, PlayerStats stats) {
         if (item != null && item.hasItemMeta()) {
             ItemMeta meta = item.getItemMeta();
@@ -179,6 +144,7 @@ public class PlayerStatsManager {
                 PersistentDataContainer pdc = meta.getPersistentDataContainer();
                 String itemId = pdc.get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
 
+                // FIX: Add item stats to the corresponding EQUIPMENT bonus fields using correct setters
                 if (NBTKeys.STRENGTH_KEY != null) stats.setEquipmentStrength(stats.getEquipmentStrength() + pdc.getOrDefault(NBTKeys.STRENGTH_KEY, PersistentDataType.INTEGER, 0));
                 if (NBTKeys.CRIT_CHANCE_KEY != null) stats.setEquipmentCritChance(stats.getEquipmentCritChance() + pdc.getOrDefault(NBTKeys.CRIT_CHANCE_KEY, PersistentDataType.INTEGER, 0));
                 if (NBTKeys.CRIT_DAMAGE_KEY != null) stats.setEquipmentCritDamage(stats.getEquipmentCritDamage() + pdc.getOrDefault(NBTKeys.CRIT_DAMAGE_KEY, PersistentDataType.INTEGER, 0));
@@ -189,12 +155,14 @@ public class PlayerStatsManager {
                 if (NBTKeys.FISHING_SPEED_KEY != null) stats.setEquipmentFishingSpeed(stats.getEquipmentFishingSpeed() + pdc.getOrDefault(NBTKeys.FISHING_SPEED_KEY, PersistentDataType.INTEGER, 0));
                 if (NBTKeys.SHOOTING_SPEED_KEY != null) stats.setEquipmentShootingSpeed(stats.getEquipmentShootingSpeed() + pdc.getOrDefault(NBTKeys.SHOOTING_SPEED_KEY, PersistentDataType.INTEGER, 0));
 
+                // Defense with End Amplification logic
                 if (NBTKeys.DEFENSE_KEY != null ) {
                     if (pdc.has(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER)) {
                         int itemDefense = pdc.getOrDefault(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER, 0);
                         if (itemId != null && itemId.startsWith("ender_") && player.getWorld().getEnvironment() == World.Environment.THE_END) {
-                            itemDefense *= 2;
+                            itemDefense *= 2; // End Amplification
                         }
+                        // FIX: Use correct setter for equipment defense
                         stats.setEquipmentDefense(stats.getEquipmentDefense() + itemDefense);
                     }
                 }
@@ -202,6 +170,7 @@ public class PlayerStatsManager {
         }
     }
 
+    // --- Speed Modifier Logic (Unchanged) ---
     private void applySpeedModifier(Player player, int speedStatPercentage) {
         AttributeInstance speedAttribute = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
         if (speedAttribute == null) return;
@@ -223,6 +192,7 @@ public class PlayerStatsManager {
         }
     }
 
+    // --- Ender Health Bonus Logic (Unchanged) ---
     private void applyEnderHealthBonus(Player player) {
         PlayerInventory inventory = player.getInventory();
         ItemStack[] armorPieces = {inventory.getHelmet(), inventory.getChestplate(), inventory.getLeggings(), inventory.getBoots()};
@@ -236,7 +206,7 @@ public class PlayerStatsManager {
             ItemStack armorPiece = armorPieces[i];
             EquipmentSlot currentEquipmentSlot = equipmentSlotsArray[i];
             UUID currentHealthBonusUuid = enderHealthBonusUuids.get(currentEquipmentSlot);
-            removeModifier(healthAttribute, currentHealthBonusUuid);
+            removeModifier(healthAttribute, currentHealthBonusUuid); // Remove existing first
 
             if (armorPiece != null && armorPiece.hasItemMeta() && NBTKeys.ITEM_ID_KEY != null) {
                 ItemMeta meta = armorPiece.getItemMeta();
@@ -268,6 +238,7 @@ public class PlayerStatsManager {
         }
     }
 
+    // --- Modifier Helper Methods (Unchanged) ---
     private void removeModifier(AttributeInstance attributeInstance, UUID modifierUuid) {
         if (attributeInstance == null || modifierUuid == null) return;
         AttributeModifier toRemove = null;
@@ -289,11 +260,11 @@ public class PlayerStatsManager {
         return false;
     }
 
+    // --- Player Join/Quit Logic (Unchanged) ---
     public void handlePlayerJoin(Player player) {
-        getStats(player); // Ensures stats object is created
-        scheduleStatsUpdate(player); // Apply all effects after a short delay
+        getStats(player);
+        updateAndApplyAllEffects(player);
     }
-
     public void handlePlayerQuit(Player player) {
         AttributeInstance speedAttribute = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
         if (speedAttribute != null) {
@@ -305,12 +276,11 @@ public class PlayerStatsManager {
             for (EquipmentSlot slot : equipmentSlotsArray) {
                 if (enderHealthBonusUuids.containsKey(slot)) removeModifier(healthAttribute, enderHealthBonusUuids.get(slot));
             }
-            // Also remove the health cap modifier on quit
-            removeModifier(healthAttribute, HEALTH_CAP_MODIFIER_UUID);
         }
         playerStatsCache.remove(player.getUniqueId());
     }
 
+    // --- Regen Tasks (Unchanged) ---
     private void startManaRegenTask() {
         new BukkitRunnable() {
             @Override public void run() {
@@ -347,14 +317,16 @@ public class PlayerStatsManager {
         }.runTaskTimer(plugin, healthRegenIntervalTicks, healthRegenIntervalTicks);
     }
 
+    // --- Stat Refresh Task (Unchanged) ---
     private void startStatRefreshTask() {
         new BukkitRunnable() {
             @Override public void run() {
                 for (Player player : Bukkit.getOnlinePlayers()) updateAndApplyAllEffects(player);
             }
-        }.runTaskTimer(plugin, 40L, 20L); // Refresh every 2 seconds (40 ticks), then every 1 sec (20 ticks)
+        }.runTaskTimer(plugin, 40L, 20L);
     }
 
+    // --- Mana Bar Update Task (Unchanged) ---
     private void startManaBarUpdateTask() {
         new BukkitRunnable() {
             @Override public void run() {
@@ -367,9 +339,10 @@ public class PlayerStatsManager {
         }.runTaskTimer(plugin, 60L, 20L);
     }
 
+    // --- Schedule Update Method (Unchanged) ---
     public void scheduleStatsUpdate(Player player) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player != null && player.isOnline()) updateAndApplyAllEffects(player);
-        }, 2L); // 2 ticks delay
+        }, 2L);
     }
 }

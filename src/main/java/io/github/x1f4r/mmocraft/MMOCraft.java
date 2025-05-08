@@ -3,6 +3,7 @@ package io.github.x1f4r.mmocraft;
 import io.github.x1f4r.mmocraft.commands.*;
 import io.github.x1f4r.mmocraft.crafting.CraftingGUIListener;
 import io.github.x1f4r.mmocraft.crafting.RecipeManager;
+import io.github.x1f4r.mmocraft.display.DamageAndHealthDisplayManager;
 import io.github.x1f4r.mmocraft.items.ArmorSetListener;
 import io.github.x1f4r.mmocraft.items.ItemManager;
 import io.github.x1f4r.mmocraft.items.PlayerAbilityListener;
@@ -33,6 +34,7 @@ public final class MMOCraft extends JavaPlugin {
     private ItemManager itemManager;
     private PlayerStatsManager playerStatsManager;
     private EntityStatsManager entityStatsManager;
+    private DamageAndHealthDisplayManager damageAndHealthDisplayManager;
 
     private final Map<UUID, BukkitTask> activeDragonAIs = new HashMap<>();
 
@@ -56,18 +58,20 @@ public final class MMOCraft extends JavaPlugin {
         this.playerStatsManager = new PlayerStatsManager(this);
         this.entityStatsManager = new EntityStatsManager(this);
         this.craftingGUIListener = new CraftingGUIListener(this);
+        this.damageAndHealthDisplayManager = new DamageAndHealthDisplayManager(this);
 
         PluginManager pm = getServer().getPluginManager();
         pm.registerEvents(this.craftingGUIListener, this);
         pm.registerEvents(new MobDropListener(this), this);
         pm.registerEvents(new ArmorSetListener(this), this);
         pm.registerEvents(new PlayerAbilityListener(this), this);
-        pm.registerEvents(new PlayerDamageListener(this), this);
+        pm.registerEvents(new PlayerDamageListener(this, this.damageAndHealthDisplayManager), this);
         pm.registerEvents(new PlayerEquipmentListener(this), this);
         pm.registerEvents(new EntitySpawnListener(this), this);
         pm.registerEvents(new PlayerSaturationListener(), this);
         pm.registerEvents(new BowListener(this), this);
         pm.registerEvents(new PlayerToolListener(this), this);
+        pm.registerEvents(this.damageAndHealthDisplayManager, this); // Register the display manager itself as a listener
 
         registerCommands();
 
@@ -82,11 +86,15 @@ public final class MMOCraft extends JavaPlugin {
             }
         }
         activeDragonAIs.clear();
-        getLogger().info("MMOCraft Plugin has been disabled! Active AI tasks cancelled.");
+
+        if (damageAndHealthDisplayManager != null) {
+            damageAndHealthDisplayManager.cleanupOnDisable();
+        }
+
+        getLogger().info("MMOCraft Plugin has been disabled! Active AI tasks cancelled and displays cleaned up.");
     }
 
     private void registerCommands() {
-        // Existing commands
         PluginCommand customCraftCmd = getCommand("customcraft");
         if (customCraftCmd != null) customCraftCmd.setExecutor(new CustomCraftCommand(this.craftingGUIListener));
         else getLogger().warning("Command 'customcraft' not found in plugin.yml!");
@@ -110,7 +118,6 @@ public final class MMOCraft extends JavaPlugin {
         if (reloadMobsCmd != null) reloadMobsCmd.setExecutor(new ReloadMobsConfigCommand(this));
         else getLogger().warning("Command 'reloadmobs' not found in plugin.yml!");
 
-        // New Admin Stats Command
         PluginCommand adminStatsCmd = getCommand("mmoadmin");
         if (adminStatsCmd != null) {
             AdminStatsCommand adminExecutor = new AdminStatsCommand(this);
@@ -130,4 +137,5 @@ public final class MMOCraft extends JavaPlugin {
     public PlayerStatsManager getPlayerStatsManager() { return playerStatsManager; }
     public EntityStatsManager getEntityStatsManager() { return entityStatsManager; }
     public CraftingGUIListener getCraftingGUIListener() { return craftingGUIListener; }
+    public DamageAndHealthDisplayManager getDamageAndHealthDisplayManager() { return damageAndHealthDisplayManager; }
 }

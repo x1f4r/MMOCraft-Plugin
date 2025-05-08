@@ -2,6 +2,7 @@ package io.github.x1f4r.mmocraft.listeners;
 
 import io.github.x1f4r.mmocraft.MMOCraft;
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
+import org.bukkit.entity.ArmorStand; // Import ArmorStand
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -30,8 +31,9 @@ public class EntitySpawnListener implements Listener {
         }
 
         LivingEntity entity = event.getEntity();
-        if (entity instanceof Player) {
-            return; // Players are handled by PlayerStatsManager on join
+        // MODIFIED LINE: Also ignore ArmorStand entities
+        if (entity instanceof Player || entity instanceof ArmorStand) {
+            return; // Players are handled by PlayerStatsManager on join, ArmorStands should not have stats managed
         }
 
         // Register and apply custom stats to newly spawned mobs

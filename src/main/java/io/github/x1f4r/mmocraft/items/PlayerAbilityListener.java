@@ -85,19 +85,14 @@ public class PlayerAbilityListener implements Listener {
         PlayerStats playerStats = statsManager.getStats(player);
         int shootingSpeedStat = playerStats.getShootingSpeed(); // Higher is faster fire rate
 
-        // Calculate cooldown in ticks (20 ticks = 1 second)
-        // Example: 0 shooting speed = 20 ticks (1s). 100 shooting speed = 10 ticks (0.5s). 200 shooting speed = 5 ticks (0.25s)
-        // Max fire rate of 1 tick (20 arrows/sec) if shooting speed is very high.
-        long cooldownTicks = Math.max(1, 20 - (shootingSpeedStat / 10)); // Each 10 shooting speed reduces cooldown by 1 tick from base 20.
-        long cooldownMillis = cooldownTicks * 50; // Convert ticks to milliseconds
+        long cooldownTicks = Math.max(1, 20 - (shootingSpeedStat / 10));
+        long cooldownMillis = cooldownTicks * 50;
 
         long currentTime = System.currentTimeMillis();
         if (instantBowCooldowns.getOrDefault(player.getUniqueId(), 0L) + cooldownMillis > currentTime) {
-            // player.sendMessage(ChatColor.RED + "Not ready to shoot yet!"); // Optional feedback
             return;
         }
 
-        // Mana Cost (optional, can be added to items.yml for instant bows)
         int manaCost = 0;
         if (NBTKeys.MANA_COST_KEY != null && bowPDC.has(NBTKeys.MANA_COST_KEY, PersistentDataType.INTEGER)) {
             manaCost = bowPDC.get(NBTKeys.MANA_COST_KEY, PersistentDataType.INTEGER);
@@ -107,14 +102,12 @@ public class PlayerAbilityListener implements Listener {
             return;
         }
 
-        // Arrow consumption logic
         boolean magicalAmmo = false;
         if (NBTKeys.TREE_BOW_MAGICAL_AMMO_KEY != null && bowPDC.has(NBTKeys.TREE_BOW_MAGICAL_AMMO_KEY, PersistentDataType.BYTE)) {
             magicalAmmo = bowPDC.get(NBTKeys.TREE_BOW_MAGICAL_AMMO_KEY, PersistentDataType.BYTE) == 1;
         }
 
         if (!magicalAmmo) {
-            // Check for arrows and consume one if not magical ammo
             if (!player.getInventory().contains(Material.ARROW) && player.getGameMode() != GameMode.CREATIVE) {
                 player.sendMessage(ChatColor.RED + "No arrows!");
                 return;
@@ -124,10 +117,8 @@ public class PlayerAbilityListener implements Listener {
             }
         }
 
-        // Launch arrow
-        // Calculate velocity based on player's SHOOTING_SPEED stat for projectile speed
-        double baseVelocityMultiplier = 3.0D; // Standard base for fully drawn bow
-        double shootingSpeedBonus = 1.0 + (playerStats.getShootingSpeed() / 100.0); // e.g., 100 shooting speed = 2.0x velocity
+        double baseVelocityMultiplier = 3.0D;
+        double shootingSpeedBonus = 1.0 + (playerStats.getShootingSpeed() / 100.0);
         Vector velocity = player.getEyeLocation().getDirection().multiply(baseVelocityMultiplier * shootingSpeedBonus);
 
         Arrow arrow = player.launchProjectile(Arrow.class, velocity);
@@ -136,7 +127,6 @@ public class PlayerAbilityListener implements Listener {
             arrow.setPickupStatus(Arrow.PickupStatus.CREATIVE_ONLY);
         }
 
-        // Apply Tree Bow power if it's the Tree Bow
         String itemId = bowPDC.get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
         if ("tree_bow".equalsIgnoreCase(itemId)) {
             PersistentDataContainer arrowPDC = arrow.getPersistentDataContainer();
@@ -148,11 +138,10 @@ public class PlayerAbilityListener implements Listener {
                 arrowPDC.set(NBTKeys.PROJECTILE_SOURCE_BOW_TYPE_KEY, PersistentDataType.STRING, "tree_bow");
             }
         } else if (itemId != null && NBTKeys.PROJECTILE_SOURCE_BOW_TYPE_KEY != null) {
-            // Tag arrow from other custom instant bows
             arrow.getPersistentDataContainer().set(NBTKeys.PROJECTILE_SOURCE_BOW_TYPE_KEY, PersistentDataType.STRING, itemId);
         }
 
-
+        player.setFallDistance(0.0f); // <--- RESET FALL DAMAGE HERE
         player.playSound(player.getLocation(), Sound.ENTITY_ARROW_SHOOT, 1.0f, 1.0f);
         instantBowCooldowns.put(player.getUniqueId(), currentTime);
     }
@@ -187,6 +176,7 @@ public class PlayerAbilityListener implements Listener {
                         entity.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION_LARGE, entity.getLocation().add(0,1,0), 1);
                     }
                 });
+        player.setFallDistance(0.0f); // <--- RESET FALL DAMAGE HERE
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.0f);
         player.getWorld().spawnParticle(Particle.FLAME, player.getEyeLocation().add(player.getLocation().getDirection()), 30, 0.5, 0.5, 0.5, 0.1);
     }
@@ -244,7 +234,7 @@ public class PlayerAbilityListener implements Listener {
         }
 
         player.teleport(targetTeleportLocation);
-        player.setFallDistance(0f); // <-- ADDED LINE: Reset fall damage
+        player.setFallDistance(0.0f); // <--- RESET FALL DAMAGE HERE
         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f);
         player.getWorld().spawnParticle(Particle.PORTAL, eyeLocation, 30, 0.3, 0.5, 0.3, 0.2);
         player.getWorld().spawnParticle(Particle.PORTAL, player.getEyeLocation(), 30, 0.3, 0.5, 0.3, 0.2);

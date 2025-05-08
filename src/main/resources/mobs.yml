@@ -5,7 +5,7 @@ mobs:
     maxHealth: 150.0 # Vanilla is 20
     defense: 10      # Custom defense stat (0-infinity)
     strength: 5      # Additive damage bonus
-    speed: -10       # Percentage speed modifier (e.g., -10 makes it 10% slower, 10 makes it 10% faster)
+    speed:  -50      # Percentage speed modifier (e.g., -10 makes it 10% slower, 10 makes it 10% faster)
     maxMana: 0       # If mobs use mana
     critChance: 0    # 0-100
     critDamage: 0    # Bonus crit damage %
