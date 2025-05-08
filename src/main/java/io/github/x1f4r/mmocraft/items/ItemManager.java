@@ -52,7 +52,6 @@ public class ItemManager {
                 ItemStack parsedItem = parseItem(itemId, itemConfig);
                 if (parsedItem != null) {
                     customItems.put(itemId.toLowerCase(), parsedItem);
-                    plugin.getLogger().info("Loaded custom item: " + itemId);
                 }
             }
         }
@@ -85,12 +84,12 @@ public class ItemManager {
         if (meta == null) {
             plugin.getLogger().warning("Could not get ItemMeta for material '" + matName + "' (item " + itemId + "). Item will be basic.");
             try {
-                meta = item.getItemMeta(); // Retry getting meta
+                meta = item.getItemMeta();
                 if (meta != null && NBTKeys.ITEM_ID_KEY != null) {
                     meta.getPersistentDataContainer().set(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING, itemId.toLowerCase());
                     item.setItemMeta(meta);
                 }
-            } catch (Exception e) { /* ignore, failed to get meta */ }
+            } catch (Exception e) { /* ignore */ }
             return item;
         }
 
@@ -111,7 +110,7 @@ public class ItemManager {
         if (enchantsSection != null) {
             for (String enchantKey : enchantsSection.getKeys(false)) {
                 Enchantment enchantment = Enchantment.getByKey(org.bukkit.NamespacedKey.minecraft(enchantKey.toLowerCase()));
-                if (enchantment == null) enchantment = Enchantment.getByName(enchantKey.toUpperCase()); // Fallback for older names
+                if (enchantment == null) enchantment = Enchantment.getByName(enchantKey.toUpperCase());
                 if (enchantment != null) {
                     int level = enchantsSection.getInt(enchantKey, 1);
                     meta.addEnchant(enchantment, level, true);
@@ -157,41 +156,35 @@ public class ItemManager {
         ConfigurationSection customStatsSection = itemConfig.getConfigurationSection("custom_stats");
         if (customStatsSection != null) {
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
-            if (NBTKeys.STRENGTH_KEY != null && customStatsSection.contains("STRENGTH")) {
-                pdc.set(NBTKeys.STRENGTH_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("STRENGTH"));
+            if (NBTKeys.STRENGTH_KEY != null && customStatsSection.contains("STRENGTH")) pdc.set(NBTKeys.STRENGTH_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("STRENGTH"));
+            if (NBTKeys.CRIT_CHANCE_KEY != null && customStatsSection.contains("CRIT_CHANCE")) pdc.set(NBTKeys.CRIT_CHANCE_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("CRIT_CHANCE"));
+            if (NBTKeys.CRIT_DAMAGE_KEY != null && customStatsSection.contains("CRIT_DAMAGE")) pdc.set(NBTKeys.CRIT_DAMAGE_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("CRIT_DAMAGE"));
+
+            // Mana: MAX_MANA for player stat bonus, MANA_COST for ability cost
+            if (NBTKeys.MANA_KEY != null && customStatsSection.contains("MAX_MANA")) { // For armor/items that increase player's max mana
+                pdc.set(NBTKeys.MANA_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MAX_MANA"));
             }
-            if (NBTKeys.CRIT_CHANCE_KEY != null && customStatsSection.contains("CRIT_CHANCE")) {
-                pdc.set(NBTKeys.CRIT_CHANCE_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("CRIT_CHANCE"));
+            if (NBTKeys.MANA_COST_KEY != null && customStatsSection.contains("MANA_COST")) { // For items with abilities that consume mana
+                pdc.set(NBTKeys.MANA_COST_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MANA_COST"));
             }
-            if (NBTKeys.CRIT_DAMAGE_KEY != null && customStatsSection.contains("CRIT_DAMAGE")) {
-                pdc.set(NBTKeys.CRIT_DAMAGE_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("CRIT_DAMAGE"));
+            // Fallback if only "MANA" is present (could be ambiguous, treat as MAX_MANA for now or log warning)
+            else if (NBTKeys.MANA_KEY != null && customStatsSection.contains("MANA") && !customStatsSection.contains("MAX_MANA") && !customStatsSection.contains("MANA_COST")) {
+                pdc.set(NBTKeys.MANA_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MANA")); // Assume it's MAX_MANA if not specified
             }
-            if (NBTKeys.MANA_KEY != null) {
-                if (customStatsSection.contains("MANA")) {
-                    pdc.set(NBTKeys.MANA_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MANA"));
-                } else if (customStatsSection.contains("MANA_COST")) {
-                    pdc.set(NBTKeys.MANA_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MANA_COST"));
-                } else if (customStatsSection.contains("MAX_MANA")) {
-                    pdc.set(NBTKeys.MANA_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MAX_MANA"));
-                }
-            }
-            if (NBTKeys.SPEED_KEY != null && customStatsSection.contains("SPEED")) {
-                pdc.set(NBTKeys.SPEED_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("SPEED"));
-            }
-            // Defense Key Handling with Debugging
-            if (NBTKeys.DEFENSE_KEY != null) { // Check if NBTKeys.DEFENSE_KEY itself is initialized
-                if (customStatsSection.contains("DEFENSE")) {
-                    int defenseVal = customStatsSection.getInt("DEFENSE");
-                    pdc.set(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER, defenseVal);
-                    // ---- START DEBUG LOGGING ----
-                    plugin.getLogger().info("[ItemManager DEBUG] Item: " + itemId + ", Set NBT DEFENSE_KEY to: " + defenseVal);
-                    // ---- END DEBUG LOGGING ----
-                } else {
-                    // ---- START DEBUG LOGGING ----
-                    plugin.getLogger().info("[ItemManager DEBUG] Item: " + itemId + ", custom_stats section does NOT contain 'DEFENSE'. PDC will not have DEFENSE_KEY set by ItemManager for this stat.");
-                    // ---- END DEBUG LOGGING ----
-                }
-            }
+
+
+            if (NBTKeys.SPEED_KEY != null && customStatsSection.contains("SPEED")) pdc.set(NBTKeys.SPEED_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("SPEED"));
+            if (NBTKeys.DEFENSE_KEY != null && customStatsSection.contains("DEFENSE")) pdc.set(NBTKeys.DEFENSE_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("DEFENSE"));
+
+            if (NBTKeys.TREE_BOW_POWER_KEY != null && customStatsSection.contains("TREE_BOW_POWER")) pdc.set(NBTKeys.TREE_BOW_POWER_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("TREE_BOW_POWER"));
+            if (NBTKeys.TREE_BOW_MAGICAL_AMMO_KEY != null && customStatsSection.contains("TREE_BOW_MAGICAL_AMMO")) pdc.set(NBTKeys.TREE_BOW_MAGICAL_AMMO_KEY, PersistentDataType.BYTE, (byte)customStatsSection.getInt("TREE_BOW_MAGICAL_AMMO"));
+            if (NBTKeys.INSTANT_SHOOT_BOW_TAG != null && customStatsSection.contains("INSTANT_SHOOT_BOW")) pdc.set(NBTKeys.INSTANT_SHOOT_BOW_TAG, PersistentDataType.BYTE, (byte)customStatsSection.getInt("INSTANT_SHOOT_BOW"));
+
+
+            if (NBTKeys.MINING_SPEED_KEY != null && customStatsSection.contains("MINING_SPEED")) pdc.set(NBTKeys.MINING_SPEED_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("MINING_SPEED"));
+            if (NBTKeys.FORAGING_SPEED_KEY != null && customStatsSection.contains("FORAGING_SPEED")) pdc.set(NBTKeys.FORAGING_SPEED_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("FORAGING_SPEED"));
+            if (NBTKeys.FISHING_SPEED_KEY != null && customStatsSection.contains("FISHING_SPEED")) pdc.set(NBTKeys.FISHING_SPEED_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("FISHING_SPEED"));
+            if (NBTKeys.SHOOTING_SPEED_KEY != null && customStatsSection.contains("SHOOTING_SPEED")) pdc.set(NBTKeys.SHOOTING_SPEED_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("SHOOTING_SPEED"));
         }
 
         if (NBTKeys.ITEM_ID_KEY != null) {

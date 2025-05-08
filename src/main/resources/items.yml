@@ -20,25 +20,29 @@ items:
   tree_pickaxe:
     material: WOODEN_PICKAXE
     name: "&aTree Pickaxe"
-    lore: ["&7Surprisingly sturdy."]
+    lore:
+      - "&7Surprisingly sturdy."
+      - "&7Mining Speed: &e+100"
     unbreakable: true
-    enchants: { DIG_SPEED: 3 }
     item_flags: [ HIDE_ENCHANTS, HIDE_UNBREAKABLE, HIDE_ATTRIBUTES ]
     attributes: { GENERIC_ATTACK_DAMAGE: 2.0:ADD_NUMBER:HAND }
     custom_stats:
       STRENGTH: 2
+      MINING_SPEED: 100
 
   tree_axe:
     material: WOODEN_AXE
     name: "&aTree Axe"
-    lore: ["&7Feels weighty."]
+    lore:
+      - "&7Feels weighty."
+      - "&7Foraging Speed: &e+100"
     unbreakable: true
-    enchants: { DIG_SPEED: 3 }
     item_flags: [ HIDE_ENCHANTS, HIDE_UNBREAKABLE, HIDE_ATTRIBUTES ]
     attributes: { GENERIC_ATTACK_DAMAGE: 5.0:ADD_NUMBER:HAND }
     custom_stats:
       STRENGTH: 8
       CRIT_CHANCE: 2
+      FORAGING_SPEED: 100
 
   tree_helmet:
     material: LEATHER_HELMET
@@ -49,7 +53,7 @@ items:
     attributes:
       GENERIC_ARMOR: 2.0:ADD_NUMBER:HEAD
     custom_stats:
-      MAX_MANA: 10
+      MAX_MANA: 10 # This item adds to player's max mana
       DEFENSE: 5
 
   tree_chestplate:
@@ -100,6 +104,7 @@ items:
       - ""
       - "&6Ability: Dragon's Fury &e&lRIGHT CLICK"
       - "&7Unleash a wave of draconic energy."
+      - "&cNO COOLDOWN"
       - ""
       - "&cStrength: &f+50"
       - "&cCrit Damage: &f+75%"
@@ -107,17 +112,14 @@ items:
       - ""
       - "&bMana Cost: &3100"
     unbreakable: true
-    enchants:
-      DAMAGE_ALL: 5
-      LOOT_BONUS_MOBS: 3
+    enchants: { DAMAGE_ALL: 5 , LOOT_BONUS_MOBS: 3 }
     item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
-    attributes:
-      GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND
+    attributes: { GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND }
     custom_stats:
       STRENGTH: 50
       CRIT_DAMAGE: 75
       SPEED: 5
-      MANA: 100
+      MANA_COST: 100 # Explicitly MANA_COST for ability
 
   aspect_of_the_end:
     material: DIAMOND_SWORD
@@ -128,6 +130,7 @@ items:
       - ""
       - "&6Ability: Instant Transmission &e&lRIGHT CLICK"
       - "&7Teleport &a8 blocks &7ahead of you."
+      - "&cNO COOLDOWN"
       - "&7Also deals damage when striking."
       - ""
       - "&cStrength: &f+25"
@@ -135,16 +138,14 @@ items:
       - ""
       - "&bMana Cost: &350"
     unbreakable: true
-    enchants:
-      DAMAGE_ALL: 3
+    enchants: { DAMAGE_ALL: 3 }
     item_flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
-    attributes:
-      GENERIC_ATTACK_DAMAGE: 6.0:ADD_NUMBER:HAND
+    attributes: { GENERIC_ATTACK_DAMAGE: 6.0:ADD_NUMBER:HAND }
     custom_stats:
       STRENGTH: 25
       CRIT_CHANCE: 10
       CRIT_DAMAGE: 25
-      MANA: 50
+      MANA_COST: 50 # Explicitly MANA_COST
 
   # --- End Armor Set ---
   ender_helmet:
@@ -162,67 +163,70 @@ items:
       - "&5&lEPIC HELMET"
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
-    attributes:
-      GENERIC_MAX_HEALTH: 20.0:ADD_NUMBER:HEAD
-    custom_stats:
-      DEFENSE: 35
+    attributes: { GENERIC_MAX_HEALTH: 20.0:ADD_NUMBER:HEAD }
+    custom_stats: { DEFENSE: 35 }
 
   ender_chestplate:
     material: DIAMOND_CHESTPLATE
     name: "&5Ender Chestplate"
-    lore:
-      - "&7Health: &a+30"
-      - "&7Defense: &a+60"
-      - ""
-      - "&6Ability: End Amplification"
-      - "&7All stats on this armor piece are"
-      - "&7multiplied by &c2x &7while on"
-      - "&7the End Island!"
-      - ""
-      - "&5&lEPIC CHESTPLATE"
+    lore: ["&7Health: &a+30", "&7Defense: &a+60", "", "&6Ability: End Amplification", "", "&5&lEPIC CHESTPLATE"]
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
-    attributes:
-      GENERIC_MAX_HEALTH: 30.0:ADD_NUMBER:CHEST
-    custom_stats:
-      DEFENSE: 60
+    attributes: { GENERIC_MAX_HEALTH: 30.0:ADD_NUMBER:CHEST }
+    custom_stats: { DEFENSE: 60 }
 
   ender_leggings:
     material: DIAMOND_LEGGINGS
     name: "&5Ender Leggings"
-    lore:
-      - "&7Health: &a+25"
-      - "&7Defense: &a+50"
-      - ""
-      - "&6Ability: End Amplification"
-      - "&7All stats on this armor piece are"
-      - "&7multiplied by &c2x &7while on"
-      - "&7the End Island!"
-      - ""
-      - "&5&lEPIC LEGGINGS"
+    lore: ["&7Health: &a+25", "&7Defense: &a+50", "", "&6Ability: End Amplification", "", "&5&lEPIC LEGGINGS"]
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
-    attributes:
-      GENERIC_MAX_HEALTH: 25.0:ADD_NUMBER:LEGS
-    custom_stats:
-      DEFENSE: 50
+    attributes: { GENERIC_MAX_HEALTH: 25.0:ADD_NUMBER:LEGS }
+    custom_stats: { DEFENSE: 50 }
 
   ender_boots:
     material: DIAMOND_BOOTS
     name: "&5Ender Boots"
-    lore:
-      - "&7Health: &a+15"
-      - "&7Defense: &a+25"
-      - ""
-      - "&6Ability: End Amplification"
-      - "&7All stats on this armor piece are"
-      - "&7multiplied by &c2x &7while on"
-      - "&7the End Island!"
-      - ""
-      - "&5&lEPIC BOOTS"
+    lore: ["&7Health: &a+15", "&7Defense: &a+25", "", "&6Ability: End Amplification", "", "&5&lEPIC BOOTS"]
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
-    attributes:
-      GENERIC_MAX_HEALTH: 15.0:ADD_NUMBER:FEET
+    attributes: { GENERIC_MAX_HEALTH: 15.0:ADD_NUMBER:FEET }
+    custom_stats: { DEFENSE: 25 }
+
+  # --- Tree Bow (Juju Style) ---
+  tree_bow:
+    material: BOW
+    name: "&aTree Bow &7(Juju Style)"
+    lore:
+      - "&7A bow carved from ancient, resilient wood,"
+      - "&7humming with untamed forest magic."
+      - ""
+      - "&6Ability: Instant Shot &e&lRIGHT CLICK"
+      - "&7Fires arrows instantly without drawing."
+      - "&7Consumes no arrows."
+      - ""
+      - "&cPower: &fExceptional (Base damage multiplier x6)"
+      - "&bShooting Speed: &e+100 &7(Faster fire rate & projectile speed)"
+      - "&7Unbreakable"
+    unbreakable: true
+    item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ] # Hide vanilla enchants/attributes
     custom_stats:
-      DEFENSE: 25
+      TREE_BOW_POWER: 6        # Damage multiplier for its arrows
+      TREE_BOW_MAGICAL_AMMO: 1 # 1 = true (doesn't consume arrows)
+      INSTANT_SHOOT_BOW: 1     # 1 = true (enables right-click instant fire)
+      SHOOTING_SPEED: 100      # Higher = faster fire rate and faster projectiles
+      # MANA_COST: 5           # Optional: Add mana cost per shot
+
+  # --- Example Fishing Rod ---
+  master_angler_rod:
+    material: FISHING_ROD
+    name: "&bMaster Angler's Rod"
+    lore:
+      - "&7Legends say this rod can pull fish from"
+      - "&7the very fabric of time."
+      - ""
+      - "&9Fishing Speed: &e+100"
+    unbreakable: true
+    item_flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
+    custom_stats:
+      FISHING_SPEED: 100 # Should significantly reduce wait time / increase Lure

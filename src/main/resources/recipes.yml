@@ -39,9 +39,9 @@ recipes:
   tree_helmet:
     type: SHAPED
     result: { item_id: tree_helmet }
-    shape: [ "LLL", "L L" ] # Removed empty third row for compactness
+    shape: [ "LLL", "L L" ]
     ingredients:
-      L: { type: TAG, value: LOGS, amount: 32 } # Reduced amount for helmet
+      L: { type: TAG, value: LOGS, amount: 32 }
   tree_chestplate:
     type: SHAPED
     result: { item_id: tree_chestplate }
@@ -57,9 +57,9 @@ recipes:
   tree_boots:
     type: SHAPED
     result: { item_id: tree_boots }
-    shape: [ "L L", "L L" ] # Removed empty first row
+    shape: [ "L L", "L L" ]
     ingredients:
-      L: { type: TAG, value: LOGS, amount: 32 } # Reduced amount for boots
+      L: { type: TAG, value: LOGS, amount: 32 }
 
   # --- Aspect of the End Recipe (Example) ---
   aspect_of_the_end:
@@ -70,6 +70,18 @@ recipes:
       - "ESE"
       - " S "
     ingredients:
-      P: { type: MATERIAL, value: ENDER_PEARL, amount: 8 } # Needs 8 pearls per slot
-      E: { type: MATERIAL, value: END_STONE, amount: 16 }  # Needs 16 end stone per slot
-      S: { type: MATERIAL, value: NETHERITE_INGOT, amount: 1 } # Or DIAMOND, or STICK
+      P: { type: MATERIAL, value: ENDER_PEARL, amount: 8 }
+      E: { type: MATERIAL, value: END_STONE, amount: 16 }
+      S: { type: MATERIAL, value: NETHERITE_INGOT, amount: 1 }
+
+  # --- NEW Tree Bow Recipe ---
+  tree_bow:
+    type: SHAPED
+    result: { item_id: tree_bow }
+    shape:
+      - " SL"
+      - "S L"
+      - " SL"
+    ingredients:
+      S: { type: MATERIAL, value: STRING, amount: 64 }
+      L: { type: TAG, value: LOGS, amount: 64 }

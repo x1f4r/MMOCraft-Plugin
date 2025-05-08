@@ -6,10 +6,12 @@ import io.github.x1f4r.mmocraft.crafting.RecipeManager;
 import io.github.x1f4r.mmocraft.items.ArmorSetListener;
 import io.github.x1f4r.mmocraft.items.ItemManager;
 import io.github.x1f4r.mmocraft.items.PlayerAbilityListener;
+import io.github.x1f4r.mmocraft.listeners.BowListener;
 import io.github.x1f4r.mmocraft.listeners.EntitySpawnListener;
-import io.github.x1f4r.mmocraft.listeners.PlayerSatiationListener;
+import io.github.x1f4r.mmocraft.listeners.PlayerToolListener;
+import io.github.x1f4r.mmocraft.player.listeners.PlayerSaturationListener;
 import io.github.x1f4r.mmocraft.mobs.MobDropListener;
-import io.github.x1f4r.mmocraft.player.PlayerStatsManager; // Added import
+import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
 import io.github.x1f4r.mmocraft.player.listeners.PlayerDamageListener;
 import io.github.x1f4r.mmocraft.player.listeners.PlayerEquipmentListener;
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
@@ -17,7 +19,11 @@ import io.github.x1f4r.mmocraft.utils.NBTKeys;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Level;
 
 public final class MMOCraft extends JavaPlugin {
@@ -25,8 +31,10 @@ public final class MMOCraft extends JavaPlugin {
     private CraftingGUIListener craftingGUIListener;
     private RecipeManager recipeManager;
     private ItemManager itemManager;
-    private PlayerStatsManager playerStatsManager; // This line should now work
+    private PlayerStatsManager playerStatsManager;
     private EntityStatsManager entityStatsManager;
+
+    private final Map<UUID, BukkitTask> activeDragonAIs = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -45,9 +53,8 @@ public final class MMOCraft extends JavaPlugin {
 
         this.itemManager = new ItemManager(this);
         this.recipeManager = new RecipeManager(this);
-        this.playerStatsManager = new PlayerStatsManager(this); // This line should now work
+        this.playerStatsManager = new PlayerStatsManager(this);
         this.entityStatsManager = new EntityStatsManager(this);
-
         this.craftingGUIListener = new CraftingGUIListener(this);
 
         PluginManager pm = getServer().getPluginManager();
@@ -58,7 +65,9 @@ public final class MMOCraft extends JavaPlugin {
         pm.registerEvents(new PlayerDamageListener(this), this);
         pm.registerEvents(new PlayerEquipmentListener(this), this);
         pm.registerEvents(new EntitySpawnListener(this), this);
-        pm.registerEvents(new PlayerSatiationListener(), this);
+        pm.registerEvents(new PlayerSaturationListener(), this);
+        pm.registerEvents(new BowListener(this), this);
+        pm.registerEvents(new PlayerToolListener(this), this);
 
         registerCommands();
 
@@ -67,41 +76,58 @@ public final class MMOCraft extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        getLogger().info("MMOCraft Plugin has been disabled!");
+        for (BukkitTask task : activeDragonAIs.values()) {
+            if (task != null && !task.isCancelled()) {
+                task.cancel();
+            }
+        }
+        activeDragonAIs.clear();
+        getLogger().info("MMOCraft Plugin has been disabled! Active AI tasks cancelled.");
     }
 
     private void registerCommands() {
-        PluginCommand customCraftPluginCommand = this.getCommand("customcraft");
-        if (customCraftPluginCommand != null) {
-            customCraftPluginCommand.setExecutor(new CustomCraftCommand(this.craftingGUIListener));
-        } else { getLogger().log(Level.WARNING, "Command 'customcraft' not found in plugin.yml!");}
+        // Existing commands
+        PluginCommand customCraftCmd = getCommand("customcraft");
+        if (customCraftCmd != null) customCraftCmd.setExecutor(new CustomCraftCommand(this.craftingGUIListener));
+        else getLogger().warning("Command 'customcraft' not found in plugin.yml!");
 
-        PluginCommand summonElderDragonPluginCommand = this.getCommand("summonelderdragon");
-        if (summonElderDragonPluginCommand != null) {
-            summonElderDragonPluginCommand.setExecutor(new SummonElderDragonCommand(this));
-        } else { getLogger().log(Level.WARNING, "Command 'summonelderdragon' not found in plugin.yml!");}
+        PluginCommand summonDragonCmd = getCommand("summonelderdragon");
+        if (summonDragonCmd != null) summonDragonCmd.setExecutor(new SummonElderDragonCommand(this));
+        else getLogger().warning("Command 'summonelderdragon' not found in plugin.yml!");
 
-        PluginCommand giveCustomItemPluginCommand = this.getCommand("givecustomitem");
-        if (giveCustomItemPluginCommand != null) {
-            GiveCustomItemCommand giveCmdExecutor = new GiveCustomItemCommand(this);
-            giveCustomItemPluginCommand.setExecutor(giveCmdExecutor);
-            giveCustomItemPluginCommand.setTabCompleter(giveCmdExecutor);
-        } else { getLogger().log(Level.WARNING, "Command 'givecustomitem' NOT FOUND in plugin.yml!");}
+        PluginCommand giveItemCmd = getCommand("givecustomitem");
+        if (giveItemCmd != null) {
+            GiveCustomItemCommand giveExecutor = new GiveCustomItemCommand(this);
+            giveItemCmd.setExecutor(giveExecutor);
+            giveItemCmd.setTabCompleter(giveExecutor);
+        } else getLogger().warning("Command 'givecustomitem' not found in plugin.yml!");
 
-        PluginCommand playerStatsPluginCommand = this.getCommand("stats");
-        if (playerStatsPluginCommand != null) {
-            playerStatsPluginCommand.setExecutor(new PlayerStatsCommand(this));
-        } else { getLogger().log(Level.WARNING, "Command 'stats' not found in plugin.yml!");}
+        PluginCommand statsCmd = getCommand("stats");
+        if (statsCmd != null) statsCmd.setExecutor(new PlayerStatsCommand(this));
+        else getLogger().warning("Command 'stats' not found in plugin.yml!");
 
-        PluginCommand reloadMobsConfigCmd = this.getCommand("reloadmobs");
-        if (reloadMobsConfigCmd != null) {
-            reloadMobsConfigCmd.setExecutor(new ReloadMobsConfigCommand(this));
-        } else { getLogger().log(Level.WARNING, "Command 'reloadmobs' not found in plugin.yml (Optional: for reloading mobs.yml).");}
+        PluginCommand reloadMobsCmd = getCommand("reloadmobs");
+        if (reloadMobsCmd != null) reloadMobsCmd.setExecutor(new ReloadMobsConfigCommand(this));
+        else getLogger().warning("Command 'reloadmobs' not found in plugin.yml!");
+
+        // New Admin Stats Command
+        PluginCommand adminStatsCmd = getCommand("mmoadmin");
+        if (adminStatsCmd != null) {
+            AdminStatsCommand adminExecutor = new AdminStatsCommand(this);
+            adminStatsCmd.setExecutor(adminExecutor);
+            adminStatsCmd.setTabCompleter(adminExecutor);
+        } else {
+            getLogger().log(Level.WARNING, "Command 'mmoadmin' not found in plugin.yml! Please add it.");
+        }
+    }
+
+    public Map<UUID, BukkitTask> getActiveDragonAIs() {
+        return activeDragonAIs;
     }
 
     public RecipeManager getRecipeManager() { return recipeManager; }
     public ItemManager getItemManager() { return itemManager; }
-    public PlayerStatsManager getPlayerStatsManager() { return playerStatsManager; } // This line should now work
+    public PlayerStatsManager getPlayerStatsManager() { return playerStatsManager; }
     public EntityStatsManager getEntityStatsManager() { return entityStatsManager; }
     public CraftingGUIListener getCraftingGUIListener() { return craftingGUIListener; }
 }

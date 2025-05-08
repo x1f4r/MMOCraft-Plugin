@@ -1,15 +1,16 @@
 name: mmocraft
-version: '1.0-SNAPSHOT'
+version: '1.0-SNAPSHOT' # Consider updating version as you make significant changes
 main: io.github.x1f4r.mmocraft.MMOCraft
-api-version: '1.20'
+api-version: '1.20' # Or your target server version, ensure Paper API for some features
 authors: [x1f4r]
-description: Custom items, recipes, and mobs with a unique crafting system.
+description: Custom items, recipes, mobs, and advanced player/entity stats.
 
 commands:
   customcraft:
     description: Opens the custom MMO crafting GUI.
     usage: /<command>
     aliases: [mcraft, mmoc]
+    permission: mmocraft.command.craft # Added permission node
 
   summonelderdragon:
     description: Summons a powerful Elder Dragon.
@@ -28,13 +29,18 @@ commands:
     description: Displays your current MMOCraft stats.
     usage: /<command>
     aliases: [mystats, mmostats]
-    permission: mmocraft.command.stats
-    permission-message: You do not have permission to view your stats.
+    permission: mmocraft.command.stats # Added permission node
 
-  reloadmobs: # New Command
+  reloadmobs:
     description: Reloads the mobs.yml configuration.
     usage: /<command>
-    permission: mmocraft.command.reloadmobs # Define this permission
+    permission: mmocraft.command.reloadmobs
+    permission-message: You do not have permission to use this command.
+
+  mmoadmin: # NEW ADMIN COMMAND
+    description: Admin commands for managing MMOCraft player stats.
+    usage: /<command> stat <health|mana> <current|max> <set|add|remove> <player> <amount>
+    permission: mmocraft.command.adminstats
     permission-message: You do not have permission to use this command.
 
 
@@ -51,6 +57,9 @@ permissions:
   mmocraft.command.stats:
     description: Allows players to view their own MMOCraft stats.
     default: true
-  mmocraft.command.reloadmobs: # New Permission
+  mmocraft.command.reloadmobs:
     description: Allows usage of the /reloadmobs command.
+    default: op
+  mmocraft.command.adminstats: # NEW PERMISSION
+    description: Allows usage of the /mmoadmin command for stat manipulation.
     default: op

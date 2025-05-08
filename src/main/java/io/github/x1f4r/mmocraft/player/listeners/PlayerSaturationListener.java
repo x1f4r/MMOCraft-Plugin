@@ -1,11 +1,12 @@
-package io.github.x1f4r.mmocraft.listeners;
+// Corrected package to match the import in MMOCraft.java
+package io.github.x1f4r.mmocraft.player.listeners;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 
-public class PlayerSatiationListener implements Listener {
+public class PlayerSaturationListener implements Listener {
 
     @EventHandler
     public void onFoodLevelChange(FoodLevelChangeEvent event) {
