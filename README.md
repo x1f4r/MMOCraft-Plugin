@@ -115,5 +115,3 @@ The project includes a PowerShell script (`AutoUUIDReplace.ps1`) located in `src
     4.  Confirm the backup prompt.
     5.  Review the changes and rebuild the project.
 * **Placeholder Requirement**: For the script to identify and replace UUIDs, they must be defined in the code using the specific prefix: `UUID.fromString("YOUR_UNIQUE_UUID_HERE_...")`. Any suffix can be added after `YOUR_UNIQUE_UUID_HERE` for context.
-
-This revised README should be more suitable for a GitHub repository, providing essential information for users and potential contributors.
