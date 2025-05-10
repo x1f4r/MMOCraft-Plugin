@@ -2,6 +2,8 @@ name: MMOCraft
 version: '1.1-REFACTORED'
 main: io.github.x1f4r.mmocraft.core.MMOPlugin
 api-version: '1.20'
+softdepend:
+  - ProtocolLib
 authors: [x1f4r]
 description: Refactored MMO Engine.
 

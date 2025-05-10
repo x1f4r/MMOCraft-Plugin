@@ -4,39 +4,50 @@ import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
 import io.github.x1f4r.mmocraft.stats.PlayerStats; // Correct import
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.FishHook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
-
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import io.github.x1f4r.mmocraft.utils.NBTKeys;
+import org.bukkit.persistence.PersistentDataType;
 
 public class PlayerToolListener implements Listener {
 
-    // private final MMOCore core; // Removed
     private final PlayerStatsManager statsManager;
     private final Logger log;
+    private final MMOPlugin plugin;
 
-    // Track custom block damage progress (Player UUID -> Block -> Damage Accumulated)
-    private final Map<UUID, Map<Block, Float>> playerBlockDamage = new HashMap<>();
-    // Track blocks being broken by this listener to prevent re-entry issues
-    private final Set<Block> customBreakingBlocks = new HashSet<>();
+    // Player UUID -> Location of the block they are currently targeting by our system
+    private final Map<UUID, Location> playerTargetBlock = new ConcurrentHashMap<>();
+    // Player UUID -> Accumulated progress (0.0f to 1.0f+) on their target block
+    private final Map<UUID, Float> playerBlockProgress = new ConcurrentHashMap<>();
+    // Map to store active mining tasks for players
+    private final Map<UUID, BukkitTask> activeMiningTasks = new ConcurrentHashMap<>();
 
-    // Define material sets for different tool types (Consider loading from config?)
-    private static final Set<Material> MINING_MATERIALS = new HashSet<>(Arrays.asList(
+    // Material sets for tool effectiveness
+    private static final Set<Material> MINING_MATERIALS_PICKAXE = new HashSet<>(Arrays.asList(
             Material.STONE, Material.COBBLESTONE, Material.GRANITE, Material.DIORITE, Material.ANDESITE,
             Material.DEEPSLATE, Material.COBBLED_DEEPSLATE, Material.TUFF, Material.CALCITE,
             Material.COAL_ORE, Material.IRON_ORE, Material.GOLD_ORE, Material.DIAMOND_ORE, Material.EMERALD_ORE,
@@ -45,169 +56,428 @@ public class PlayerToolListener implements Listener {
             Material.DEEPSLATE_EMERALD_ORE, Material.DEEPSLATE_LAPIS_ORE, Material.DEEPSLATE_REDSTONE_ORE, Material.DEEPSLATE_COPPER_ORE,
             Material.NETHER_QUARTZ_ORE, Material.NETHER_GOLD_ORE, Material.GILDED_BLACKSTONE,
             Material.ANCIENT_DEBRIS, Material.OBSIDIAN, Material.CRYING_OBSIDIAN, Material.NETHERRACK,
-            Material.END_STONE, Material.SANDSTONE, Material.RED_SANDSTONE, Material.TERRACOTTA,
+            Material.END_STONE, Material.SANDSTONE, Material.RED_SANDSTONE, Material.TERRACOTTA, // Added missing stone types
             Material.ICE, Material.PACKED_ICE, Material.BLUE_ICE, Material.BASALT, Material.SMOOTH_BASALT, Material.BLACKSTONE,
-            Material.AMETHYST_BLOCK, Material.BUDDING_AMETHYST
+            Material.AMETHYST_BLOCK, Material.BUDDING_AMETHYST,
+            // Concrete, Terracotta variants, Rails, Dispensers, Furnaces etc. if desired
+            Material.FURNACE, Material.BLAST_FURNACE, Material.SMOKER, Material.DISPENSER, Material.DROPPER, Material.OBSERVER,
+            Material.IRON_BLOCK, Material.GOLD_BLOCK, Material.DIAMOND_BLOCK, Material.EMERALD_BLOCK, Material.LAPIS_BLOCK, Material.REDSTONE_BLOCK, Material.COAL_BLOCK, Material.NETHERITE_BLOCK, Material.COPPER_BLOCK, Material.RAW_IRON_BLOCK, Material.RAW_GOLD_BLOCK, Material.RAW_COPPER_BLOCK,
+            Material.RAIL, Material.POWERED_RAIL, Material.DETECTOR_RAIL, Material.ACTIVATOR_RAIL,
+            Material.ANVIL, Material.CHIPPED_ANVIL, Material.DAMAGED_ANVIL, Material.HOPPER, Material.IRON_BARS, Material.CHAIN, Material.IRON_DOOR, Material.IRON_TRAPDOOR,
+            Material.BREWING_STAND, Material.CAULDRON, Material.BELL, Material.GRINDSTONE, Material.STONECUTTER, Material.ENCHANTING_TABLE, Material.END_PORTAL_FRAME
     ));
 
     private static final Set<Material> FORAGING_MATERIALS_AXE = new HashSet<>(Arrays.asList(
-            // Logs, Wood, Stems, Hyphae (Stripped and Non-Stripped)
+            // Logs & Wood
             Material.OAK_LOG, Material.SPRUCE_LOG, Material.BIRCH_LOG, Material.JUNGLE_LOG, Material.ACACIA_LOG, Material.DARK_OAK_LOG, Material.MANGROVE_LOG, Material.CHERRY_LOG, Material.CRIMSON_STEM, Material.WARPED_STEM,
             Material.OAK_WOOD, Material.SPRUCE_WOOD, Material.BIRCH_WOOD, Material.JUNGLE_WOOD, Material.ACACIA_WOOD, Material.DARK_OAK_WOOD, Material.MANGROVE_WOOD, Material.CHERRY_WOOD, Material.CRIMSON_HYPHAE, Material.WARPED_HYPHAE,
             Material.STRIPPED_OAK_LOG, Material.STRIPPED_SPRUCE_LOG, Material.STRIPPED_BIRCH_LOG, Material.STRIPPED_JUNGLE_LOG, Material.STRIPPED_ACACIA_LOG, Material.STRIPPED_DARK_OAK_LOG, Material.STRIPPED_MANGROVE_LOG, Material.STRIPPED_CHERRY_LOG, Material.STRIPPED_CRIMSON_STEM, Material.STRIPPED_WARPED_STEM,
             Material.STRIPPED_OAK_WOOD, Material.STRIPPED_SPRUCE_WOOD, Material.STRIPPED_BIRCH_WOOD, Material.STRIPPED_JUNGLE_WOOD, Material.STRIPPED_ACACIA_WOOD, Material.STRIPPED_DARK_OAK_WOOD, Material.STRIPPED_MANGROVE_WOOD, Material.STRIPPED_CHERRY_WOOD, Material.STRIPPED_CRIMSON_HYPHAE, Material.STRIPPED_WARPED_HYPHAE,
-            // Other Axe-breakable blocks
-            Material.PUMPKIN, Material.CARVED_PUMPKIN, Material.JACK_O_LANTERN, Material.MELON, Material.BOOKSHELF, Material.CRAFTING_TABLE, Material.CHEST, Material.TRAPPED_CHEST, Material.NOTE_BLOCK, Material.MUSHROOM_STEM, Material.RED_MUSHROOM_BLOCK, Material.BROWN_MUSHROOM_BLOCK,
-            Material.BAMBOO, Material.COCOA, Material.VINE, Material.MANGROVE_ROOTS, Material.WARPED_WART_BLOCK, Material.NETHER_WART_BLOCK
+            // Other axe-breakable
+            Material.PUMPKIN, Material.CARVED_PUMPKIN, Material.JACK_O_LANTERN, Material.MELON, Material.BOOKSHELF, Material.CRAFTING_TABLE, Material.CHEST, Material.TRAPPED_CHEST, Material.NOTE_BLOCK, Material.JUKEBOX,
+            Material.MUSHROOM_STEM, Material.RED_MUSHROOM_BLOCK, Material.BROWN_MUSHROOM_BLOCK,
+            Material.BAMBOO_BLOCK, Material.STRIPPED_BAMBOO_BLOCK, // Added Bamboo blocks
+            Material.COCOA, Material.VINE, Material.MANGROVE_ROOTS, Material.WARPED_WART_BLOCK, Material.NETHER_WART_BLOCK,
+            Material.OAK_PLANKS, Material.SPRUCE_PLANKS, Material.BIRCH_PLANKS, Material.JUNGLE_PLANKS, Material.ACACIA_PLANKS, Material.DARK_OAK_PLANKS, Material.MANGROVE_PLANKS, Material.CHERRY_PLANKS, Material.CRIMSON_PLANKS, Material.WARPED_PLANKS, Material.BAMBOO_PLANKS, // Planks for completeness
+            Material.OAK_FENCE, Material.SPRUCE_FENCE, Material.BIRCH_FENCE, Material.JUNGLE_FENCE, Material.ACACIA_FENCE, Material.DARK_OAK_FENCE, Material.MANGROVE_FENCE, Material.CHERRY_FENCE, Material.CRIMSON_FENCE, Material.WARPED_FENCE, Material.BAMBOO_FENCE, // Fences
+            Material.OAK_FENCE_GATE, Material.SPRUCE_FENCE_GATE, Material.BIRCH_FENCE_GATE, Material.JUNGLE_FENCE_GATE, Material.ACACIA_FENCE_GATE, Material.DARK_OAK_FENCE_GATE, Material.MANGROVE_FENCE_GATE, Material.CHERRY_FENCE_GATE, Material.CRIMSON_FENCE_GATE, Material.WARPED_FENCE_GATE, Material.BAMBOO_FENCE_GATE // Fence Gates
     ));
-    private static final Set<Material> FORAGING_MATERIALS_SHOVEL = new HashSet<>(Arrays.asList(
+     private static final Set<Material> FORAGING_MATERIALS_SHOVEL = new HashSet<>(Arrays.asList(
             Material.DIRT, Material.GRASS_BLOCK, Material.SAND, Material.RED_SAND, Material.GRAVEL,
             Material.CLAY, Material.SOUL_SAND, Material.SOUL_SOIL, Material.SNOW_BLOCK, Material.SNOW,
-            Material.MYCELIUM, Material.PODZOL, Material.FARMLAND, Material.DIRT_PATH, Material.ROOTED_DIRT, Material.MUD // Added Mud
+            Material.MYCELIUM, Material.PODZOL, Material.FARMLAND, Material.DIRT_PATH, Material.ROOTED_DIRT, Material.MUD
     ));
 
-
     public PlayerToolListener(MMOCore core) {
-        // this.core = core; // Removed assignment
         this.statsManager = core.getPlayerStatsManager();
+        this.plugin = core.getPlugin();
         this.log = MMOPlugin.getMMOLogger();
+        log.info("PlayerToolListener Initialized (BlockDamageEvent + BukkitRunnable Method).");
     }
 
-    // --- Custom Block Breaking Speed ---
-    // Requires Paper API for BlockDamageEvent to fire reliably each tick.
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.LEFT_CLICK_BLOCK) {
+            return;
+        }
+        Player player = event.getPlayer();
+        Block clickedBlock = event.getClickedBlock();
+        if (clickedBlock == null || isUnbreakableVanillaBlock(clickedBlock.getType())) {
+            return;
+        }
+
+        UUID playerUUID = player.getUniqueId();
+        Location newTargetLocation = clickedBlock.getLocation();
+
+        // If player switches target block, clear old state
+        Location oldTargetLocation = playerTargetBlock.put(playerUUID, newTargetLocation);
+        if (oldTargetLocation != null && !oldTargetLocation.equals(newTargetLocation)) {
+            clearMiningState(player, oldTargetLocation, true, true);
+        }
+        
+        // Reset progress for the new (or same) target block
+        playerBlockProgress.put(playerUUID, 0.0f);
+        log.log(Level.FINEST, "[PTL Inter] Player " + player.getName() + " targeted block " + newTargetLocation);
+
+        // Creative mode handles its own breaking
+        if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
+            clearMiningState(player, newTargetLocation, true, true); // Cleanup if they were mining then switched
+            return;
+        }
+        // At this point, onPlayerInteract has just set up the target.
+        // BlockDamageEvent will handle the actual start of custom breaking if applicable.
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockDamage(BlockDamageEvent event) {
         Player player = event.getPlayer();
         Block block = event.getBlock();
-        ItemStack tool = event.getItemInHand(); // Tool used
+        UUID playerUUID = player.getUniqueId();
 
-        // Ignore creative/spectator, no tool, or if already being custom broken
-        if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) return;
-        if (tool == null || tool.getType() == Material.AIR) return;
-        if (customBreakingBlocks.contains(block)) return;
+        if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
+            return; // Let creative/spectator break blocks normally
+        }
+        
+        Location currentTargetLocByInteract = playerTargetBlock.get(playerUUID);
+        // Ensure this BlockDamageEvent is for the block the player just interacted with
+        if (currentTargetLocByInteract == null || !currentTargetLocByInteract.equals(block.getLocation())) {
+            // Player might be damaging a different block than the one last left-clicked
+            // Or, no left-click was registered by onPlayerInteract for this block.
+            // Allow vanilla behavior for this damage tick.
+            return;
+        }
+
+        ItemStack tool = player.getInventory().getItemInMainHand();
+        if (tool == null) tool = new ItemStack(Material.AIR);
 
         PlayerStats stats = statsManager.getStats(player);
-        int speedStat = 0; // Mining Speed, Foraging Speed, etc.
-        boolean correctToolType = false;
+        int speedStatValue = getApplicableToolSpeedStat(tool, block.getType(), stats);
+
+        if (speedStatValue == -1) { // Not an effective tool for this block or no custom speed
+            log.log(Level.FINEST, "[PTL Damage] Ineffective tool " + tool.getType() + " or no speed stat for " + block.getType() + " by " + player.getName() + ". Vanilla handles.");
+            clearMiningState(player, block.getLocation(), true, true); // Ensure our state is clean
+            return; // Let vanilla handle breaking
+        }
+        
+        // If we reach here, it's a custom break scenario
+        event.setCancelled(true); // IMPORTANT: Cancel vanilla damage accumulation for this block
+        log.log(Level.INFO, "[PTL Damage] Player " + player.getName() + " custom damaging " + block.getType() + " with " + tool.getType() + ". SpeedStat: " + speedStatValue);
+
+        // Stop any previous mining task for this player
+        BukkitTask existingTask = activeMiningTasks.remove(playerUUID);
+        if (existingTask != null) {
+            existingTask.cancel();
+        }
+
+        // Reset progress and start new mining task
+        playerBlockProgress.put(playerUUID, 0.0f);
+
+        MiningTask newTask = new MiningTask(player, block, tool, speedStatValue);
+        BukkitTask task = newTask.runTaskTimer(plugin, 0L, 1L); // Run every tick
+        activeMiningTasks.put(playerUUID, task);
+    }
+    
+    private int getApplicableToolSpeedStat(ItemStack tool, Material blockMaterial, PlayerStats stats) {
         String toolName = tool.getType().name().toUpperCase();
-
-        // Determine the relevant speed stat based on tool and block
-        if (toolName.endsWith("_PICKAXE") && MINING_MATERIALS.contains(block.getType())) {
-            speedStat = stats.getMiningSpeed();
-            correctToolType = true;
-        } else if (toolName.endsWith("_SHOVEL") && FORAGING_MATERIALS_SHOVEL.contains(block.getType())) {
-            // Shovel speed often tied to Mining Speed in concepts like Hypixel Skyblock
-            speedStat = stats.getMiningSpeed(); // Or use Foraging Speed if preferred
-            correctToolType = true;
-        } else if (toolName.endsWith("_AXE") && FORAGING_MATERIALS_AXE.contains(block.getType())) {
-            speedStat = stats.getForagingSpeed();
-            correctToolType = true;
+        if (toolName.endsWith("_PICKAXE") && MINING_MATERIALS_PICKAXE.contains(blockMaterial)) {
+            return stats.getMiningSpeed();
+        } else if (toolName.endsWith("_AXE") && FORAGING_MATERIALS_AXE.contains(blockMaterial)) {
+            return stats.getForagingSpeed();
+        } else if (toolName.endsWith("_SHOVEL") && FORAGING_MATERIALS_SHOVEL.contains(blockMaterial)) {
+            return stats.getMiningSpeed(); // Shovels use Mining Speed
         }
-        // Add HOE logic if needed for Farming Speed
+        return -1; // Indicates not a custom tool/block combo or no speed stat
+    }
 
-        // Only proceed if using the correct tool type AND the relevant speed stat is > 0
-        if (correctToolType && speedStat > 0) {
-            event.setCancelled(true); // Cancel vanilla damaging
 
-            float blockHardness = block.getType().getHardness();
-            // Handle blocks with 0 hardness (instantly breakable vanilla)
-            if (blockHardness <= 0) blockHardness = 0.01f; // Assign a tiny hardness
+    private class MiningTask extends BukkitRunnable {
+        private final UUID playerUUID;
+        private final Location blockLocation;
+        private final Material originalBlockType;
+        private final ItemStack toolUsed; // Store a clone or be careful with modification
+        private final int speedStat;
+        private final Player player; // Store direct reference for convenience
 
-            // --- Damage Calculation ---
-            // This needs significant tuning for balance. Based loosely on breaking power concepts.
-            // Higher speed stat should drastically reduce time. Hardness increases time.
-            // Base ticks needed = Hardness * SomeConstant (e.g., 20 for 1 second base)
-            // Speed factor = (1 + SpeedStat / 100) ? Or something more exponential?
-            // Ticks = (Base Ticks Needed) / Speed Factor
-            // Damage per tick = 1.0f / Ticks
+        public MiningTask(Player player, Block block, ItemStack tool, int speedStat) {
+            this.playerUUID = player.getUniqueId();
+            this.blockLocation = block.getLocation();
+            this.originalBlockType = block.getType();
+            this.toolUsed = tool.clone(); // Clone to avoid issues if player swaps item
+            this.speedStat = speedStat;
+            this.player = player;
+        }
 
-            // Simplified Approach: Damage = (Base Rate * Speed Factor) / Hardness
-            float baseRate = 0.05f; // Adjust this: Controls overall speed
-            float speedFactor = 1.0f + (speedStat / 50.0f); // Adjust divisor: Controls how impactful speed stat is
-            float damagePerTick = (baseRate * speedFactor) / blockHardness;
-
-            // Ensure minimum damage per tick to prevent extremely slow breaking
-            damagePerTick = Math.max(0.005f, damagePerTick); // Minimum 0.5% damage per tick
-
-            Map<Block, Float> damages = playerBlockDamage.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>());
-            float currentDamage = damages.getOrDefault(block, 0.0f) + damagePerTick;
-
-            log.finest("Block: " + block.getType() + " Hardness: " + blockHardness + " SpeedStat: " + speedStat + " DamageTick: " + damagePerTick + " CurrentDamage: " + currentDamage);
-
-            if (currentDamage >= 1.0f) {
-                // Block should break
-                customBreakingBlocks.add(block); // Mark as being broken by us
-                boolean brokenNaturally = block.breakNaturally(tool); // Try to break naturally first
-                if (!brokenNaturally) {
-                    // Fallback if breakNaturally fails (e.g., cancelled by another plugin)
-                    block.setType(Material.AIR);
-                }
-                // Play break sound
-                player.playSound(block.getLocation(), block.getBlockData().getSoundGroup().getBreakSound(), 1.0f, 0.8f);
-
-                // Handle Tool Durability
-                handleToolDurability(player, tool);
-
-                // Clean up tracking maps
-                damages.remove(block);
-                customBreakingBlocks.remove(block);
-
-                // Reset damage map for player if empty (minor optimization)
-                if (damages.isEmpty()) {
-                    playerBlockDamage.remove(player.getUniqueId());
-                }
-            } else {
-                // Store progress and potentially send block crack packets (requires NMS/ProtocolLib)
-                damages.put(block, currentDamage);
-                // sendBlockCrackPacket(player, block, currentDamage); // Placeholder
+        @Override
+        public void run() {
+            if (!player.isOnline() || player.isDead()) {
+                log.log(Level.FINEST, "[MiningTask] Player " + player.getName() + " logged off/died. Cancelling task.");
+                clearMiningStateAndCancel(true);
+                return;
             }
-        } else {
-            // If not using the right tool or speed stat is 0, clear any tracked damage for this block
-            playerBlockDamage.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>()).remove(block);
+
+            if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
+                log.log(Level.FINEST, "[MiningTask] Player " + player.getName() + " switched to creative/spectator. Cancelling task.");
+                clearMiningStateAndCancel(true);
+                return;
+            }
+
+            Block currentBlock = blockLocation.getBlock();
+            if (currentBlock.getType() != originalBlockType) {
+                log.log(Level.FINEST, "[MiningTask] Block at " + blockLocation + " changed type. Cancelling task.");
+                clearMiningStateAndCancel(true); // Clear animation for original location
+                return;
+            }
+
+            // Check if player is still targeting the same block
+            Location playerCurrentTarget = playerTargetBlock.get(playerUUID);
+            if (playerCurrentTarget == null || !playerCurrentTarget.equals(blockLocation)) {
+                 // Check using ray trace as a fallback or more precise check
+                 Block actualTarget = player.getTargetBlockExact(5);
+                 if (actualTarget == null || !actualTarget.getLocation().equals(blockLocation)) {
+                    log.log(Level.FINEST, "[MiningTask] Player " + player.getName() + " is no longer targeting " + blockLocation + ". Cancelling task.");
+                    clearMiningStateAndCancel(true);
+                    return;
+                 }
+                 // If ray trace confirms, update our map (player might have "flickered" view)
+                 playerTargetBlock.put(playerUUID, blockLocation);
+            }
+            
+            // Check tool, but use the initially captured tool for stat calculation consistency.
+            // However, if they swap to an invalid tool, we should stop.
+            ItemStack currentToolInHand = player.getInventory().getItemInMainHand();
+            if (getApplicableToolSpeedStat(currentToolInHand, originalBlockType, statsManager.getStats(player)) == -1) {
+                log.log(Level.FINEST, "[MiningTask] Player " + player.getName() + " swapped to an ineffective tool. Cancelling task.");
+                clearMiningStateAndCancel(true);
+                return;
+            }
+
+
+            // Calculate progress for this tick
+            // block.getBreakSpeed(player) is crucial: it incorporates tool material, efficiency, player effects (Haste/Fatigue)
+            // It uses the player's current main hand item implicitly.
+            float vanillaProgressPerVanillaTick = currentBlock.getBreakSpeed(player); // Pass the tool used to start mining
+
+            if (vanillaProgressPerVanillaTick <= 0f && !isUnbreakableVanillaBlock(originalBlockType)) {
+                log.log(Level.INFO, "[MiningTask] Vanilla progress is 0 for " + originalBlockType + ". Cancelling task.");
+                clearMiningStateAndCancel(true);
+                return;
+            }
+            
+            double customMultiplier = 1.0 + (this.speedStat / 100.0); // Use the speedStat captured at task start
+            if (customMultiplier <= 0) customMultiplier = 0.01; 
+
+            // Triple block breaking speed for tree tools
+            String toolItemId = toolUsed.getItemMeta().getPersistentDataContainer().get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
+            if (toolItemId != null && toolItemId.startsWith("tree_")) {
+                customMultiplier *= 3;
+            }
+
+            // Assuming 1 BukkitRunnable tick = 1 "damage application tick" for simplicity.
+            // Vanilla usually applies damage over several ticks for one "swing animation cycle".
+            // block.getBreakSpeed is "damage per tick if player is swinging".
+            // If getBreakSpeed already implies damage over 1 game tick, then this should be fine.
+            float actualProgressThisTick = (float) (vanillaProgressPerVanillaTick * customMultiplier);
+            
+            float currentAccumulatedProgress = playerBlockProgress.getOrDefault(playerUUID, 0.0f);
+            float newAccumulatedProgress = currentAccumulatedProgress + actualProgressThisTick;
+
+            log.log(Level.INFO, String.format("[MiningTask] Player: %s, Block: %s, Tool: %s, SpeedStat: %d, VanillaProgTick: %.4f, Multiplier: %.2f, ActualProgTick: %.4f, OldAccum: %.4f, NewAccum: %.4f",
+                    player.getName(), originalBlockType, toolUsed.getType(), this.speedStat, vanillaProgressPerVanillaTick, customMultiplier, actualProgressThisTick, currentAccumulatedProgress, newAccumulatedProgress));
+
+            if (newAccumulatedProgress >= 1.0f) {
+                playerBlockProgress.put(playerUUID, 1.0f); // Cap for animation
+                breakBlockAndCleanupAndCancelTask(currentBlock, toolUsed); // Pass currentBlock instance
+            } else {
+                playerBlockProgress.put(playerUUID, newAccumulatedProgress);
+            }
+        }
+
+        private void breakBlockAndCleanupAndCancelTask(Block blockToBreak, ItemStack toolForBreaking) {
+            log.log(Level.INFO, "[MiningTask] Breaking block: " + blockToBreak.getType() + " for " + player.getName());
+            
+            boolean broken = blockToBreak.breakNaturally(toolForBreaking);
+            if (broken) {
+                handleToolDurability(player, toolForBreaking); // Use the tool snapshot
+            } else {
+                log.warning("[MiningTask] block.breakNaturally() returned false for " + blockToBreak.getType() + " by " + player.getName());
+            }
+            clearMiningStateAndCancel(true); // true to ensure animation is cleared
+        }
+        
+        private void clearMiningStateAndCancel(boolean sendClearAnimation) {
+            clearMiningState(player, blockLocation, sendClearAnimation, true); // true to force task cancel
+            this.cancel(); // Cancel self
         }
     }
-
-    // Cleanup map if block breaks via other means (explosion, piston, etc.)
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockBreakCleanup(BlockBreakEvent event) {
-        // Check if the player associated with the event exists in the map
-         Map<Block, Float> damages = playerBlockDamage.get(event.getPlayer().getUniqueId());
-         if (damages != null) {
-             damages.remove(event.getBlock());
-              // Optional: Remove player entry if their map is now empty
-              if (damages.isEmpty()) {
-                  playerBlockDamage.remove(event.getPlayer().getUniqueId());
-              }
-         }
-        customBreakingBlocks.remove(event.getBlock());
+    
+    private boolean isUnbreakableVanillaBlock(Material material) {
+        return material == Material.BEDROCK || material == Material.BARRIER || material == Material.COMMAND_BLOCK ||
+               material == Material.CHAIN_COMMAND_BLOCK || material == Material.REPEATING_COMMAND_BLOCK ||
+               material == Material.STRUCTURE_BLOCK || material == Material.JIGSAW ||
+               material == Material.END_PORTAL_FRAME || material == Material.END_GATEWAY || material == Material.LIGHT;
     }
+    
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) // MONITOR to act after other plugins
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        Block block = event.getBlock();
+        Location blockLocation = block.getLocation();
+        UUID playerUUID = player.getUniqueId();
 
-    private void handleToolDurability(Player player, ItemStack tool) {
-        if (player.getGameMode() == GameMode.SURVIVAL && tool != null && tool.getItemMeta() instanceof Damageable) {
-            ItemMeta iMeta = tool.getItemMeta();
-            Damageable dMeta = (Damageable) iMeta;
-            if (!dMeta.isUnbreakable()) {
-                int unbreakingLevel = tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.DURABILITY);
-                // Chance to IGNORE durability loss is unbreakingLevel / (unbreakingLevel + 1)
-                // So, chance to TAKE damage is 1 - (unbreakingLevel / (unbreakingLevel + 1)) = 1 / (unbreakingLevel + 1)
-                if (Math.random() < (1.0 / (unbreakingLevel + 1.0))) { // Apply Unbreaking
-                    dMeta.setDamage(dMeta.getDamage() + 1);
-                    tool.setItemMeta(dMeta); // Apply updated meta
-                    if (dMeta.getDamage() >= tool.getType().getMaxDurability()) {
-                        // Item broke
-                        player.getInventory().setItemInMainHand(null); // Or offhand if applicable
-                        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
+        Location targetedLocByOurSystem = playerTargetBlock.get(playerUUID);
+        BukkitTask miningTask = activeMiningTasks.get(playerUUID);
+
+        // If this BlockBreakEvent is for the block our system was actively managing for this player via a MiningTask
+        if (miningTask != null && targetedLocByOurSystem != null && targetedLocByOurSystem.equals(blockLocation)) {
+            // Our MiningTask called block.breakNaturally(), which triggered this event.
+            // We should let it proceed. The MiningTask's cleanup will handle our internal state.
+            log.log(Level.FINEST, "[PTL BBEvent] BlockBreakEvent for " + player.getName() + " on task-managed block " + blockLocation + ". Task will clean up.");
+        } else {
+            // Block broke due to other means (vanilla, explosion, creative, other plugin)
+            // OR it's a block our system was targeting but the MiningTask finished/was cancelled before this event.
+            // We need to ensure any lingering animation or state for THIS BLOCK is cleared for ALL players.
+
+            // 1. Clear animation for this specific block for all nearby players if one was active
+            // 2. If any player was targeting this block (even if not the event's player), clear their specific mining state.
+            // This covers cases where player A was mining, then player B (creative) insta-breaks it.
+            for (Map.Entry<UUID, Location> entry : new HashMap<>(playerTargetBlock).entrySet()) { // Iterate copy
+                if (entry.getValue().equals(blockLocation)) {
+                    Player otherPlayer = Bukkit.getPlayer(entry.getKey());
+                    if (otherPlayer != null) {
+                         // false for sendClearAnimation (already done by sendBreakPacketToNearby)
+                         // true for forceCancelTask if their task was for THIS block.
+                        clearMiningState(otherPlayer, blockLocation, false, true);
+                        log.log(Level.FINEST, "[PTL BBEvent] External break of " + blockLocation + ". Cleared state for player " + otherPlayer.getName());
+                    } else {
+                        // Player offline, just remove their entries
+                        playerTargetBlock.remove(entry.getKey());
+                        playerBlockProgress.remove(entry.getKey());
+                        BukkitTask task = activeMiningTasks.remove(entry.getKey());
+                        if (task != null) task.cancel();
                     }
                 }
             }
         }
     }
 
+    private void clearMiningState(Player player, Location blockLocToClear, boolean sendClearAnimationPacket, boolean forceCancelTask) {
+        if (player == null || blockLocToClear == null) return;
+        UUID playerUUID = player.getUniqueId();
 
-    // --- Fishing Speed ---
+        // Cancel and remove active mining task for this player IF:
+        // a) forceCancelTask is true OR
+        // b) The task is for the specific blockLocToClear
+        BukkitTask task = activeMiningTasks.get(playerUUID);
+        if (task != null) {
+            boolean taskWasForThisBlock = false;
+            // A bit of a hack to check if the task was for this block without direct access to MiningTask fields here.
+            // We rely on playerTargetBlock still pointing to blockLocToClear if the task was indeed for it.
+            Location currentTargetForPlayer = playerTargetBlock.get(playerUUID);
+            if (currentTargetForPlayer != null && currentTargetForPlayer.equals(blockLocToClear)) {
+                taskWasForThisBlock = true;
+            }
+
+            if (forceCancelTask || taskWasForThisBlock) {
+                task.cancel();
+                activeMiningTasks.remove(playerUUID);
+                log.log(Level.FINEST, "[PTL Clear] Cancelled mining task for player " + player.getName() + " (force=" + forceCancelTask + ", wasForThisBlock=" + taskWasForThisBlock + ")");
+            }
+        }
+
+        // If the block being cleared is the one currently targeted by THIS player in playerTargetBlock
+        Location currentEffectivelyTargetedBlock = playerTargetBlock.get(playerUUID);
+        if (blockLocToClear.equals(currentEffectivelyTargetedBlock)) {
+            playerTargetBlock.remove(playerUUID);
+            playerBlockProgress.remove(playerUUID);
+            log.log(Level.FINEST, "[PTL Clear] Cleared target & progress for player " + player.getName() + " on block " + blockLocToClear);
+            
+            // Only send clear animation if specifically requested AND this player was targeting it
+            if (sendClearAnimationPacket) {
+                // Block break animation skipped without ProtocolLib
+            }
+        }
+        
+        // If no other player is targeting this block (via playerTargetBlock or activeMiningTasks),
+        // remove its general animation ID from activeBlockAnimations.
+        boolean stillReferenced = false;
+        for (Location loc : playerTargetBlock.values()) {
+            if (loc.equals(blockLocToClear)) {
+                stillReferenced = true;
+                break;
+            }
+        }
+        // Check activeMiningTasks as well (though ideally playerTargetBlock should be source of truth)
+        if (!stillReferenced && !isAnyTaskTargeting(blockLocToClear)) {
+            // activeBlockAnimations.remove(blockLocToClear);
+             log.log(Level.FINEST, "[PTL Clear] Removed general animation ID for " + blockLocToClear);
+        }
+    }
+    
+    private boolean isAnyTaskTargeting(Location location) {
+        for (UUID playerId : activeMiningTasks.keySet()) {
+            Location target = playerTargetBlock.get(playerId); // Check against the main target map
+            if (location.equals(target)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        UUID playerUUID = player.getUniqueId();
+        Location targetLocation = playerTargetBlock.get(playerUUID);
+        if (targetLocation != null) {
+            clearMiningState(player, targetLocation, true, true); // Send clear anim, force cancel task
+        }
+        // Ensure all maps are cleaned up for the quitting player
+        playerTargetBlock.remove(playerUUID);
+        playerBlockProgress.remove(playerUUID);
+        BukkitTask task = activeMiningTasks.remove(playerUUID);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    private void handleToolDurability(Player player, ItemStack tool) {
+        if (player.getGameMode() == GameMode.SURVIVAL && tool != null && tool.getType() != Material.AIR && tool.getItemMeta() instanceof Damageable) {
+            ItemMeta iMeta = tool.getItemMeta();
+            Damageable dMeta = (Damageable) iMeta;
+            
+            // Check PersistentDataContainer for our custom unbreakable tag first
+            // String customUnbreakable = iMeta.getPersistentDataContainer().get(NBTKeys.UNBREAKABLE_KEY, PersistentDataType.STRING);
+            // if ("true".equalsIgnoreCase(customUnbreakable)) return;
+
+            // Then check ItemMeta's unbreakable flag (from spigot api, set by item attribute or enchant)
+            if (iMeta.isUnbreakable()) return;
+
+
+            int unbreakingLevel = tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.DURABILITY);
+            if (new Random().nextInt(unbreakingLevel + 1) == 0) { // Vanilla unbreaking logic
+                dMeta.setDamage(dMeta.getDamage() + 1);
+                tool.setItemMeta(iMeta); // Apply changes to the item's meta
+                if (dMeta.getDamage() >= tool.getType().getMaxDurability()) {
+                    log.log(Level.FINE, "[PTL Dura] Tool broke: " + tool.getType() + " for " + player.getName());
+                    // Check both hands for the tool, as player might have swapped or it's an offhand tool
+                    if (tool.equals(player.getInventory().getItemInMainHand())) {
+                         player.getInventory().setItemInMainHand(null);
+                    } else if (tool.equals(player.getInventory().getItemInOffHand())) {
+                         player.getInventory().setItemInOffHand(null);
+                    }
+                    // If it's not in either hand but was the tool used (e.g. from a different slot due to prior swap)
+                    // this logic might not remove it correctly. The cloned toolUsed in MiningTask helps keep a reference.
+                    // For now, this covers main/off hand.
+                    player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
+                }
+            }
+        }
+    }
+
+    // --- Preserved Fishing Logic ---
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onPlayerFish(PlayerFishEvent event) {
-        // Primarily affects the time until a bite
         if (event.getState() == PlayerFishEvent.State.FISHING) {
             Player player = event.getPlayer();
             FishHook hook = event.getHook();
@@ -216,37 +486,40 @@ public class PlayerToolListener implements Listener {
             PlayerStats stats = statsManager.getStats(player);
             int fishingSpeedStat = stats.getFishingSpeed();
 
-            if (fishingSpeedStat > 0) {
-                // Paper API allows direct modification of wait times
+            if (fishingSpeedStat != 0) {
                 try {
-                    // Reduce Min Wait Time (Ticks) - higher fishing speed = lower min wait
-                    // Example: 100 speed reduces min wait by 50 ticks (2.5s), capped at 20 ticks min
-                    int minWaitTime = hook.getMinWaitTime(); // Get current value
-                    int minWaitReduction = Math.min(minWaitTime - 20, fishingSpeedStat / 2);
-                    hook.setMinWaitTime(Math.max(20, minWaitTime - minWaitReduction));
+                    // Paper API for modifying fish hook wait times
+                    int minWaitTime = hook.getMinWaitTime(); // Vanilla default 100
+                    int maxWaitTime = hook.getMaxWaitTime(); // Vanilla default 600
+                    
+                    // Positive fishingSpeedStat reduces wait time, negative increases it.
+                    // Example: 100 fishing speed = 0.002 * 100 = 0.2 = 20% reduction. Factor = 0.8
+                    // -100 fishing speed = -0.002 * -100 = -0.2 = 20% increase. Factor = 1.2
+                    // Clamp speedStat effect to avoid extreme values (e.g., -200% to +80% modification of time)
+                    // A fishingSpeedStat of 500 would make wait time 0. A stat of -250 would make it 1.5x.
+                    // Let's cap the factor to prevent negative or excessively long/short times.
+                    // Min factor 0.2 (80% reduction), Max factor 2.0 (100% increase)
+                    double speedEffect = Math.max(-400, Math.min(400, fishingSpeedStat)); // Cap effective stat for factor calc
+                    double speedFactor = 1.0 - (speedEffect * 0.002); // default 0.002 from hypixel
+                    speedFactor = Math.max(0.2, Math.min(2.0, speedFactor)); // Clamp factor
 
-                    // Reduce Max Wait Time (Ticks) - higher fishing speed = lower max wait
-                    // Example: 100 speed reduces max wait by 100 ticks (5s), capped relative to min wait
-                    int maxWaitTime = hook.getMaxWaitTime(); // Get current value
-                    int maxWaitReduction = Math.min(maxWaitTime - hook.getMinWaitTime() - 40, fishingSpeedStat); // Ensure max is always > min + buffer
-                    hook.setMaxWaitTime(Math.max(hook.getMinWaitTime() + 40, maxWaitTime - maxWaitReduction));
+                    int newMinWaitTime = (int) Math.round(minWaitTime * speedFactor);
+                    int newMaxWaitTime = (int) Math.round(maxWaitTime * speedFactor);
 
-                     log.finest(String.format("Player %s Fishing - Speed: %d, MinWait: %d, MaxWait: %d",
-                             player.getName(), fishingSpeedStat, hook.getMinWaitTime(), hook.getMaxWaitTime()));
+                    // Ensure min is reasonably small and max is greater than min
+                    newMinWaitTime = Math.max(20, newMinWaitTime); // Minimum 1 second wait
+                    newMaxWaitTime = Math.max(newMinWaitTime + 40, newMaxWaitTime); // Ensure max is at least 2s more than min
 
+                    hook.setMinWaitTime(newMinWaitTime);
+                    hook.setMaxWaitTime(newMaxWaitTime);
+                    log.log(Level.FINEST, String.format("[PTL Fish] Player %s - SpeedStat: %d. Factor: %.2f. OrigMin: %d, OrigMax: %d. NewMin: %d, NewMax: %d",
+                            player.getName(), fishingSpeedStat, speedFactor, minWaitTime, maxWaitTime, hook.getMinWaitTime(), hook.getMaxWaitTime()));
                 } catch (NoSuchMethodError e) {
-                    // This occurs if server is not Paper or compatible fork
-                    log.warning("Paper API for FishHook modification not found. Fishing Speed stat requires Paper server.");
-                    // Optionally apply Luck effect as a fallback (less direct)
-                    // int luckAmplifier = Math.min(4, (fishingSpeedStat / 25) - 1);
-                    // if (luckAmplifier >= 0 && !player.hasPotionEffect(PotionEffectType.LUCK)) {
-                    //    player.addPotionEffect(new PotionEffect(PotionEffectType.LUCK, hook.getMaxWaitTime() + 20, luckAmplifier, true, false));
-                    // }
+                    log.warning("[PTL Fish] Paper API for FishHook wait time (get/setMinWaitTime, get/setMaxWaitTime) not found. Fishing Speed stat requires Paper server with this API.");
                 } catch (Exception e) {
-                     log.log(Level.SEVERE, "Error applying fishing speed for " + player.getName(), e);
+                    log.log(Level.SEVERE, "[PTL Fish] Error applying fishing speed for " + player.getName(), e);
                 }
             }
         }
-        // Could add logic for CAUGHT_FISH state to modify loot based on fishing speed?
     }
 }

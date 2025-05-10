@@ -1,60 +1,45 @@
 plugins {
     id 'java'
-    id("xyz.jpenilla.run-paper") version "2.3.1" // For local testing with Paper
+    id 'com.github.johnrengelman.shadow' version '7.1.2' // Or your preferred shadow version
 }
 
 group = 'io.github.x1f4r'
-version = '1.0-SNAPSHOT'
+version = '1.1-REFACTORED'
 
 repositories {
     mavenCentral()
-    maven {
-        name = "papermc-repo"
-        url = "https://repo.papermc.io/repository/maven-public/"
-    }
-    maven {
-        name = "sonatype" // For Snapshots if needed by dependencies
-        url = "https://oss.sonatype.org/content/groups/public/"
-    }
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+    maven { url = 'https://repo.dmulloy2.net/repository/public/' } // ProtocolLib repository
+    // Add other repositories if needed, e.g. Spigot, Sonatype for snapshots
+    // maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+    // maven { url = 'https://oss.sonatype.org/content/groups/public/' }
 }
 
 dependencies {
-    // Paper API includes Bukkit and Spigot APIs.
-    // This version is for Minecraft 1.20.1.
-    compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
+    compileOnly 'io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT' // Or your target Paper API version
+    compileOnly 'com.comphenix.protocol:ProtocolLib:5.1.0' // ProtocolLib dependency
+
+    // Example test implementation (optional)
+    // testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    // testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 }
 
-tasks {
-    runServer {
-        // Configure the Minecraft version for the local test server.
-        // Your plugin.yml has api-version: '1.20'.
-        // If you want to test specifically against 1.20.1 (matching your Paper API compile version),
-        // you can change this to "1.20.1". Otherwise, "1.20" is fine.
-        minecraftVersion("1.20")
-    }
-}
-
-// Configure Java version
-def targetJavaVersion = 17 // Java 17 is required for Minecraft 1.20+
 java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-    if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    }
+    toolchain.languageVersion = JavaLanguageVersion.of(17) // Use Java 17 for modern Minecraft versions
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8' // Ensure consistent encoding
-
-    // Set the release flag for Java 10+ to ensure correct module handling if applicable
-    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-        options.release.set(targetJavaVersion)
-    }
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    // options.compilerArgs += ["-Xlint:all", "-Xlint:-processing"] // Optional: stricter linting
 }
 
-// Process plugin.yml to replace placeholders like ${version}
+shadowJar {
+    archiveClassifier.set('') // Outputs a standard JAR name (e.g., MMOCraft-1.1.jar)
+    // relocation for dependencies to avoid conflicts, if you shade any non-API dependencies
+    // relocate 'com.example.library', 'io.github.x1f4r.mmocraft.lib.com.example.library'
+}
+
+// processResources task to ensure plugin.yml is included and processed correctly
 processResources {
     def props = [version: version]
     inputs.properties props
@@ -63,3 +48,6 @@ processResources {
         expand props
     }
 }
+
+// Optional: Configure the build task to depend on shadowJar
+// build.dependsOn shadowJar
