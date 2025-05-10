@@ -3,7 +3,8 @@ package io.github.x1f4r.mmocraft.items;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
@@ -25,13 +26,11 @@ import java.util.logging.Logger;
 
 public class ItemManager {
 
-    private final MMOCore core;
     private final MMOPlugin plugin;
     private final Logger log;
     private final Map<String, ItemStack> customItemTemplates = new HashMap<>();
 
     public ItemManager(MMOCore core) {
-        this.core = core;
         this.plugin = core.getPlugin();
         this.log = MMOPlugin.getMMOLogger();
     }
@@ -100,14 +99,14 @@ public class ItemManager {
 
         String name = itemConfig.getString("name");
         if (name != null) {
-            meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
+            meta.displayName(LegacyComponentSerializer.legacyAmpersand().deserialize(name));
         }
 
-        List<String> lore = itemConfig.getStringList("lore");
-        if (!lore.isEmpty()) {
-            List<String> coloredLore = new ArrayList<>();
-            lore.forEach(line -> coloredLore.add(ChatColor.translateAlternateColorCodes('&', line)));
-            meta.setLore(coloredLore);
+        List<String> loreLines = itemConfig.getStringList("lore");
+        if (!loreLines.isEmpty()) {
+            List<Component> componentLore = new ArrayList<>();
+            loreLines.forEach(line -> componentLore.add(LegacyComponentSerializer.legacyAmpersand().deserialize(line)));
+            meta.lore(componentLore);
         }
 
         meta.setUnbreakable(itemConfig.getBoolean("unbreakable", false));
@@ -115,12 +114,26 @@ public class ItemManager {
         ConfigurationSection enchantsSection = itemConfig.getConfigurationSection("enchants");
         if (enchantsSection != null) {
             for (String enchantKey : enchantsSection.getKeys(false)) {
-                Enchantment enchantment = Enchantment.getByKey(org.bukkit.NamespacedKey.minecraft(enchantKey.toLowerCase()));
-                if (enchantment == null) enchantment = Enchantment.getByName(enchantKey.toUpperCase());
+                org.bukkit.NamespacedKey key;
+                String keyString = enchantKey.toLowerCase();
+                if (keyString.contains(":")) {
+                    // Already a full NamespacedKey string, e.g., "minecraft:sharpness"
+                    try {
+                        key = org.bukkit.NamespacedKey.fromString(keyString);
+                    } catch (IllegalArgumentException e) {
+                        log.warning("Invalid namespaced key format '" + enchantKey + "' for item '" + itemId + "'. Skipping enchantment.");
+                        continue;
+                    }
+                } else {
+                    // Simple key, assume minecraft namespace, e.g., "sharpness"
+                    key = org.bukkit.NamespacedKey.minecraft(keyString);
+                }
+
+                Enchantment enchantment = Enchantment.getByKey(key);
                 if (enchantment != null) {
                     meta.addEnchant(enchantment, enchantsSection.getInt(enchantKey, 1), true);
                 } else {
-                    log.warning("Invalid enchantment '" + enchantKey + "' for item '" + itemId + "'.");
+                    log.warning("Invalid enchantment key '" + enchantKey + "' (resolved to NamespacedKey: '" + key.toString() + "') for item '" + itemId + "'. Please use Minecraft's namespaced key (e.g., 'sharpness') or a valid full key (e.g., 'minecraft:sharpness').");
                 }
             }
         }

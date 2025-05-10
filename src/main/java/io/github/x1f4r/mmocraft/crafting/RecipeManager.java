@@ -3,7 +3,6 @@ package io.github.x1f4r.mmocraft.crafting;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.crafting.models.CustomRecipe;
-import io.github.x1f4r.mmocraft.items.ItemManager; // Needed for CustomRecipe loading
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;

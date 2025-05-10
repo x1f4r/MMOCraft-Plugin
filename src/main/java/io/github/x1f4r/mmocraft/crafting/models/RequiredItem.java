@@ -120,8 +120,34 @@ public class RequiredItem {
             return false;
         }
 
-        // TODO: Add more complex NBT/meta checks if needed in the future
         return true;
+    }
+
+    /**
+     * Checks if the given ItemStack matches the material, tag, or custom item ID of this RequiredItem,
+     * ignoring the amount. Used for finding candidates for consumption in shapeless recipes.
+     * @param item The ItemStack to check.
+     * @return True if the type (material/tag/customId) matches, false otherwise.
+     */
+    public boolean matchesTypeAndCustomId(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return false;
+        }
+        switch (this.type) {
+            case MATERIAL:
+                return (item.getType() == this.material);
+            case TAG:
+                return (this.tag != null && this.tag.isTagged(item.getType()));
+            case CUSTOM_ITEM:
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null && NBTKeys.ITEM_ID_KEY != null) {
+                    String itemIdVal = meta.getPersistentDataContainer().get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
+                    return this.customItemId.equalsIgnoreCase(itemIdVal);
+                }
+                return false; // No meta or ITEM_ID_KEY means it can't be this custom item
+            default:
+                return false;
+        }
     }
 
     // Getters
@@ -132,5 +158,16 @@ public class RequiredItem {
     public String getCustomItemId() { return customItemId; } // Can be null
 
     public enum IngredientType { MATERIAL, TAG, CUSTOM_ITEM }
+
+    @Override
+    public String toString() { // For logging
+        String valueDetail = "";
+        switch (type) {
+            case MATERIAL: valueDetail = material.name(); break;
+            case TAG: valueDetail = "#" + (tag != null ? tag.getKey().getKey() : "UNKNOWN_TAG"); break;
+            case CUSTOM_ITEM: valueDetail = "ITEM:" + customItemId; break;
+        }
+        return "RequiredItem{type=" + type + ", value=" + valueDetail + ", amount=" + amount + '}';
+    }
 }
 

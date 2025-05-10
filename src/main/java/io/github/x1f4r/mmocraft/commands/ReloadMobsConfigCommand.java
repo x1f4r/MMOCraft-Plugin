@@ -2,7 +2,8 @@ package io.github.x1f4r.mmocraft.commands;
 
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager; // Get manager from core
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -19,20 +20,17 @@ public class ReloadMobsConfigCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("mmocraft.command.reloadmobs")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return true;
         }
 
         EntityStatsManager entityStatsManager = core.getEntityStatsManager();
         if (entityStatsManager != null) {
             entityStatsManager.reloadMobsConfig();
-            // TODO: Consider iterating online non-player LivingEntities and re-applying stats
-            // This is complex and potentially performance-intensive.
-            // A simpler approach is that only newly spawned mobs will get the updated stats.
-            sender.sendMessage(ChatColor.GREEN + "MMOCraft mobs.yml configuration reloaded successfully!");
-            sender.sendMessage(ChatColor.YELLOW + "Note: Stats may only apply to newly spawned mobs unless a full server reload/restart occurs.");
+            sender.sendMessage(Component.text("MMOCraft mobs.yml configuration reloaded successfully!", NamedTextColor.GREEN));
+            sender.sendMessage(Component.text("Note: Stats may only apply to newly spawned mobs unless a full server reload/restart occurs.", NamedTextColor.YELLOW));
         } else {
-            sender.sendMessage(ChatColor.RED + "Error: EntityStatsManager not available.");
+            sender.sendMessage(Component.text("Error: EntityStatsManager not available.", NamedTextColor.RED));
         }
         return true;
     }

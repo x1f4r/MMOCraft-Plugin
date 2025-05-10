@@ -17,13 +17,11 @@ import java.util.logging.Logger;
 
 public class MobDropListener implements Listener {
 
-    private final MMOCore core;
     private final ItemManager itemManager;
     private final EntityManager entityManager; // Get EntityManager
     private final Logger log;
 
     public MobDropListener(MMOCore core) {
-        this.core = core;
         this.itemManager = core.getItemManager();
         this.entityManager = core.getEntityManager(); // Get from core
         this.log = MMOPlugin.getMMOLogger();

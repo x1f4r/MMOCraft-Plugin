@@ -8,10 +8,8 @@ import io.github.x1f4r.mmocraft.stats.EntityStats;
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
 import io.github.x1f4r.mmocraft.stats.PlayerStats; // Correct import
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
-
 import org.bukkit.Sound;
 import org.bukkit.entity.ArmorStand; // <<< ADDED IMPORT
-import org.bukkit.entity.Arrow;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -26,12 +24,10 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.Random;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class PlayerDamageListener implements Listener {
 
-    private final MMOCore core;
     private final Logger log;
     private final PlayerStatsManager playerStatsManager;
     private final EntityStatsManager entityStatsManager;
@@ -39,7 +35,6 @@ public class PlayerDamageListener implements Listener {
     private final Random random = new Random();
 
     public PlayerDamageListener(MMOCore core) {
-        this.core = core;
         this.log = MMOPlugin.getMMOLogger();
         this.playerStatsManager = core.getPlayerStatsManager();
         this.entityStatsManager = core.getEntityStatsManager();

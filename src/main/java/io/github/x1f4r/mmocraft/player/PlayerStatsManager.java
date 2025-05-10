@@ -5,10 +5,9 @@ import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.stats.PlayerStats;
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
 
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -30,7 +29,6 @@ import java.util.logging.Logger;
 
 public class PlayerStatsManager {
 
-    private final MMOCore core;
     private final MMOPlugin plugin;
     private final Logger log;
     private final Map<UUID, PlayerStats> playerStatsCache = new HashMap<>();
@@ -61,7 +59,6 @@ public class PlayerStatsManager {
     }
 
     public PlayerStatsManager(MMOCore core) {
-        this.core = core;
         this.plugin = core.getPlugin();
         this.log = MMOPlugin.getMMOLogger();
 
@@ -301,12 +298,14 @@ public class PlayerStatsManager {
                     double currentMaxHealth = maxHealthAttr != null ? maxHealthAttr.getValue() : 20.0;
                     String healthStr = String.format("%.0f", currentHealth);
                     String maxHealthStr = String.format("%.0f", currentMaxHealth);
-                    String actionBarMsg = ChatColor.RED + "HP: " + healthStr + "/" + maxHealthStr + ChatColor.DARK_GRAY + " | " + ChatColor.AQUA + "Mana: " + stats.getCurrentMana() + "/" + stats.getMaxMana();
+
+                    Component actionBarComponent = Component.text("HP: " + healthStr + "/" + maxHealthStr, NamedTextColor.RED)
+                        .append(Component.text(" | ", NamedTextColor.DARK_GRAY))
+                        .append(Component.text("Mana: " + stats.getCurrentMana() + "/" + stats.getMaxMana(), NamedTextColor.AQUA));
                     try {
-                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(actionBarMsg));
+                        player.sendActionBar(actionBarComponent);
                     } catch (Exception e) {
-                        log.log(Level.FINEST, "Could not send action bar to " + player.getName() + " (Spigot API might not be available for this component)", e);
-                         try { player.sendActionBar(actionBarMsg); } catch (Exception e2) {log.log(Level.FINEST, "Could not send action bar to " + player.getName() + " (Paper API fallback also failed)", e2); }
+                        log.log(Level.FINEST, "Could not send action bar to " + player.getName() + " (Adventure API might not be available or other issue)", e);
                     }
                 }
             }

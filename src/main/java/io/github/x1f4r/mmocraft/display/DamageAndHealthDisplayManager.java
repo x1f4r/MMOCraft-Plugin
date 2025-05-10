@@ -2,10 +2,11 @@ package io.github.x1f4r.mmocraft.display;
 
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
-import io.github.x1f4r.mmocraft.stats.EntityStats;
-import io.github.x1f4r.mmocraft.stats.EntityStatsManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -32,10 +33,8 @@ import java.util.logging.Logger;
 
 public class DamageAndHealthDisplayManager implements Listener { // Implement Listener
 
-    private final MMOCore core;
     private final MMOPlugin plugin;
     private final Logger log;
-    private final EntityStatsManager entityStatsManager; // Get from core
 
     private final Map<UUID, ArmorStand> healthBars = new ConcurrentHashMap<>();
     private static final String HEALTH_BAR_METADATA_KEY = "mmocraft_health_bar";
@@ -49,10 +48,9 @@ public class DamageAndHealthDisplayManager implements Listener { // Implement Li
     private final double damageIndicatorRisePerTick; // = 0.05;
 
     public DamageAndHealthDisplayManager(MMOCore core) {
-        this.core = core;
         this.plugin = core.getPlugin();
         this.log = MMOPlugin.getMMOLogger();
-        this.entityStatsManager = core.getEntityStatsManager(); // Get manager from core
+        // this.entityStatsManager = core.getEntityStatsManager(); // Get manager from core
 
         // Load config values
         this.healthBarYOffset = plugin.getConfig().getDouble("display.health_bar.y_offset", 0.6);
@@ -94,19 +92,21 @@ public class DamageAndHealthDisplayManager implements Listener { // Implement Li
             as.setPersistent(false); // Don't save to disk
             as.setMetadata(DAMAGE_INDICATOR_METADATA_KEY, new FixedMetadataValue(plugin, true));
 
-            String damageText;
+            Component damageTextComponent;
             // Using brighter colors and bold for crits
             if (isTrueDamage) {
                 // White with maybe subtle markers
-                damageText = ChatColor.WHITE + "✧" + damageFormat.format(damage) + "✧"; // Changed marker
+                damageTextComponent = Component.text("✧" + damageFormat.format(damage) + "✧", NamedTextColor.WHITE); // Changed marker
             } else if (isCrit) {
                 // Bright Yellow/Gold with bold and crit markers
-                damageText = ChatColor.GOLD + "" + ChatColor.BOLD + "✧" + ChatColor.YELLOW + "" + ChatColor.BOLD + damageFormat.format(damage) + ChatColor.GOLD + "" + ChatColor.BOLD + "✧"; // Changed marker
+                damageTextComponent = Component.text("✧", NamedTextColor.GOLD, TextDecoration.BOLD)
+                                .append(Component.text(damageFormat.format(damage), NamedTextColor.YELLOW, TextDecoration.BOLD))
+                                .append(Component.text("✧", NamedTextColor.GOLD, TextDecoration.BOLD)); // Changed marker
             } else {
                 // Standard Gray
-                damageText = ChatColor.GRAY + damageFormat.format(damage);
+                damageTextComponent = Component.text(damageFormat.format(damage), NamedTextColor.GRAY);
             }
-            as.setCustomName(damageText);
+            as.customName(damageTextComponent);
             as.setCustomNameVisible(true);
         });
 
@@ -251,24 +251,24 @@ public class DamageAndHealthDisplayManager implements Listener { // Implement Li
         // Clamp current health just in case
         currentHealth = Math.max(0, Math.min(currentHealth, maxHealth));
 
-        ChatColor healthColor;
+        NamedTextColor healthColor;
         double percentage = (maxHealth > 0) ? (currentHealth / maxHealth) : 0;
-        if (percentage > 0.75) healthColor = ChatColor.GREEN;
-        else if (percentage > 0.40) healthColor = ChatColor.YELLOW;
-        else if (percentage > 0.15) healthColor = ChatColor.RED;
-        else healthColor = ChatColor.DARK_RED;
+        if (percentage > 0.75) healthColor = NamedTextColor.GREEN;
+        else if (percentage > 0.40) healthColor = NamedTextColor.YELLOW;
+        else if (percentage > 0.15) healthColor = NamedTextColor.RED;
+        else healthColor = NamedTextColor.DARK_RED;
 
-        String entityNameDisplay = "";
-        if (entity.getCustomName() != null && !entity.getCustomName().isEmpty()) {
-            entityNameDisplay = entity.getCustomName() + " "; // Add space after name
+        Component entityNameDisplay = Component.empty();
+        Component currentCustomName = entity.customName();
+        if (currentCustomName != null && !LegacyComponentSerializer.legacySection().serialize(currentCustomName).isEmpty()) {
+            entityNameDisplay = currentCustomName.append(Component.text(" ")); // Add space after name
         }
-        // Optional: Use default name if no custom name
-        // else { entityNameDisplay = ChatColor.GRAY + entity.getType().name() + " "; }
 
+        Component healthTextComponent = Component.text(healthFormat.format(currentHealth), healthColor)
+                .append(Component.text("/", NamedTextColor.GRAY))
+                .append(Component.text(healthFormat.format(maxHealth), NamedTextColor.GREEN));
 
-        String healthText = healthColor + healthFormat.format(currentHealth) + ChatColor.GRAY + "/" + ChatColor.GREEN + healthFormat.format(maxHealth);
-
-        healthBar.setCustomName(entityNameDisplay + healthText);
+        healthBar.customName(entityNameDisplay.append(healthTextComponent));
 
         // Teleport the bar to follow the entity
         Location newBarLocation = entity.getLocation().add(0, entity.getHeight() + healthBarYOffset, 0);

@@ -5,6 +5,9 @@ import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
 import io.github.x1f4r.mmocraft.stats.PlayerStats; // Correct import
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -22,7 +25,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -33,8 +35,6 @@ import java.util.logging.Logger;
 
 public class PlayerAbilityListener implements Listener {
 
-    private final MMOCore core;
-    private final MMOPlugin plugin;
     private final PlayerStatsManager statsManager;
     private final Logger log;
 
@@ -51,8 +51,6 @@ public class PlayerAbilityListener implements Listener {
 
 
     public PlayerAbilityListener(MMOCore core) {
-        this.core = core;
-        this.plugin = core.getPlugin();
         this.statsManager = core.getPlayerStatsManager();
         this.log = MMOPlugin.getMMOLogger();
     }
@@ -112,7 +110,7 @@ public class PlayerAbilityListener implements Listener {
         PlayerStats stats = statsManager.getStats(player);
         int manaCost = pdc.getOrDefault(NBTKeys.MANA_COST_KEY, PersistentDataType.INTEGER, 0);
         if (manaCost > 0 && !stats.consumeMana(manaCost)) {
-            player.sendMessage(ChatColor.RED + "Not enough mana! (" + stats.getCurrentMana() + "/" + manaCost + ")");
+            player.sendMessage(Component.text("Not enough mana! (" + stats.getCurrentMana() + "/" + manaCost + ")", NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1f, 1f);
             return;
         }
@@ -155,7 +153,7 @@ public class PlayerAbilityListener implements Listener {
     // --- Specific Ability Implementations ---
 
     private boolean executeDragonFury(Player player, PlayerStats stats) {
-        player.sendMessage(ChatColor.GOLD + "You unleash " + ChatColor.BOLD + "Dragon's Fury!");
+        player.sendMessage(Component.text("You unleash ", NamedTextColor.GOLD).append(Component.text("Dragon's Fury!").decorate(TextDecoration.BOLD)));
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.0f);
         player.getWorld().spawnParticle(Particle.FLAME, player.getEyeLocation().add(player.getLocation().getDirection()), 30, 0.5, 0.5, 0.5, 0.1);
 
@@ -185,7 +183,6 @@ public class PlayerAbilityListener implements Listener {
             // Hit a block, find safe spot adjacent to hit face
             Block hitBlock = rayTrace.getHitBlock();
             BlockFace hitFace = rayTrace.getHitBlockFace();
-            Location blockLoc = hitBlock.getLocation();
 
             if (hitFace != null) {
                 Location adjacentBlockLoc = hitBlock.getRelative(hitFace).getLocation();
@@ -231,7 +228,7 @@ public class PlayerAbilityListener implements Listener {
             player.getWorld().spawnParticle(Particle.PORTAL, player.getEyeLocation(), 30, 0.3, 0.5, 0.3, 0.2);
             return true; // Teleport successful
         } else {
-            player.sendMessage(ChatColor.RED + "Cannot teleport, destination blocked!");
+            player.sendMessage(Component.text("Cannot teleport, destination blocked!", NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0f, 1.0f);
             return false; // Teleport failed
         }
@@ -265,7 +262,7 @@ public class PlayerAbilityListener implements Listener {
 
         int manaCost = bowPDC.getOrDefault(NBTKeys.MANA_COST_KEY, PersistentDataType.INTEGER, 0);
         if (manaCost > 0 && !playerStats.consumeMana(manaCost)) {
-            player.sendMessage(ChatColor.RED + "Not enough mana!");
+            player.sendMessage(Component.text("Not enough mana!", NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1f, 1f);
             return;
         }
@@ -274,7 +271,7 @@ public class PlayerAbilityListener implements Listener {
 
         if (!magicalAmmo) {
             if (!player.getInventory().contains(Material.ARROW) && player.getGameMode() != GameMode.CREATIVE) {
-                player.sendMessage(ChatColor.RED + "No arrows!");
+                player.sendMessage(Component.text("No arrows!", NamedTextColor.RED));
                 if (manaCost > 0) playerStats.addMana(manaCost); // Refund mana
                 return;
             }
@@ -319,7 +316,6 @@ public class PlayerAbilityListener implements Listener {
 
     // --- Cooldown Management ---
     private long getAbilityCooldown(String abilityId) {
-        // TODO: Load cooldowns from a config file based on abilityId
         switch (abilityId.toLowerCase()) {
             case "dragon_fury": return 500; // 0.5 seconds example
             case "instant_transmission": return 0; // <<< SET COOLDOWN TO 0

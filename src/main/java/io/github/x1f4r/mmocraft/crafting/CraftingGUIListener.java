@@ -4,6 +4,9 @@ import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.crafting.models.CustomRecipe;
 import io.github.x1f4r.mmocraft.crafting.models.RequiredItem;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -11,8 +14,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -26,13 +27,12 @@ import java.util.stream.Collectors;
 
 public class CraftingGUIListener implements Listener {
 
-    private final MMOCore core;
     private final MMOPlugin plugin;
     private final RecipeManager recipeManager;
     private final Logger log;
 
-    public static final String GUI_TITLE = ChatColor.DARK_GRAY + "Custom Crafter"; // Changed title slightly
-    private static final Logger logger = MMOPlugin.getMMOLogger(); // Static logger access
+    public static final Component GUI_TITLE_COMPONENT = Component.text("Custom Crafter", NamedTextColor.DARK_GRAY);
+    public static final String GUI_TITLE = LegacyComponentSerializer.legacySection().serialize(GUI_TITLE_COMPONENT);
 
     // GUI Layout Constants (5 rows = 45 slots) - Adjusted for more space maybe? Or keep 36? Let's use 54 (6 rows)
     private static final int GUI_SIZE = 54;
@@ -53,15 +53,15 @@ public class CraftingGUIListener implements Listener {
     static {
         FILLER_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta paneMeta = FILLER_PANE.getItemMeta();
-        if (paneMeta != null) { paneMeta.setDisplayName(ChatColor.BLACK + ""); FILLER_PANE.setItemMeta(paneMeta); }
+        if (paneMeta != null) { paneMeta.displayName(Component.text("", NamedTextColor.BLACK)); FILLER_PANE.setItemMeta(paneMeta); }
 
         ARROW_ITEM = new ItemStack(Material.SPECTRAL_ARROW); // Or other arrow type
         ItemMeta arrowMeta = ARROW_ITEM.getItemMeta();
-        if (arrowMeta != null) { arrowMeta.setDisplayName(ChatColor.YELLOW + "Craft ->"); ARROW_ITEM.setItemMeta(arrowMeta); }
+        if (arrowMeta != null) { arrowMeta.displayName(Component.text("Craft ->", NamedTextColor.YELLOW)); ARROW_ITEM.setItemMeta(arrowMeta); }
 
         BARRIER_ITEM = new ItemStack(Material.BARRIER);
         ItemMeta barrierMeta = BARRIER_ITEM.getItemMeta();
-        if (barrierMeta != null) { barrierMeta.setDisplayName(ChatColor.RED + "Invalid Recipe"); BARRIER_ITEM.setItemMeta(barrierMeta); }
+        if (barrierMeta != null) { barrierMeta.displayName(Component.text("Invalid Recipe", NamedTextColor.RED)); BARRIER_ITEM.setItemMeta(barrierMeta); }
     }
 
     // Calculate decorative slots based on functional slots and GUI size
@@ -79,14 +79,13 @@ public class CraftingGUIListener implements Listener {
 
 
     public CraftingGUIListener(MMOCore core) {
-        this.core = core;
         this.plugin = core.getPlugin();
         this.recipeManager = core.getRecipeManager(); // Get from core
         this.log = MMOPlugin.getMMOLogger();
     }
 
     public void openCustomCraftingGUI(Player player) {
-        Inventory customCrafter = Bukkit.createInventory(null, GUI_SIZE, GUI_TITLE);
+        Inventory customCrafter = Bukkit.createInventory(null, GUI_SIZE, GUI_TITLE_COMPONENT);
 
         // Fill decorative slots
         for (int slot : DECORATIVE_SLOTS) {
@@ -103,7 +102,7 @@ public class CraftingGUIListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!event.getView().getTitle().equals(GUI_TITLE)) return;
+        if (!event.getView().title().equals(GUI_TITLE_COMPONENT)) return;
         if (!(event.getWhoClicked() instanceof Player)) return;
 
         Player player = (Player) event.getWhoClicked();
@@ -165,7 +164,7 @@ public class CraftingGUIListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onInventoryDrag(InventoryDragEvent event) {
-        if (!event.getView().getTitle().equals(GUI_TITLE)) return;
+        if (!event.getView().title().equals(GUI_TITLE_COMPONENT)) return;
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
         Inventory topInventory = event.getView().getTopInventory();
@@ -234,7 +233,7 @@ public class CraftingGUIListener implements Listener {
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        if (!event.getView().getTitle().equals(GUI_TITLE)) return;
+        if (!event.getView().title().equals(GUI_TITLE_COMPONENT)) return;
         Player player = (Player) event.getPlayer();
         Inventory topInventory = event.getInventory();
 
@@ -295,7 +294,7 @@ public class CraftingGUIListener implements Listener {
             if (!leftovers.isEmpty()) {
                 itemsMovedToInv = totalCraftedAmount - leftovers.get(0).getAmount();
                 player.getWorld().dropItemNaturally(player.getLocation(), leftovers.get(0));
-                player.sendMessage(ChatColor.YELLOW + "Inventory full, some crafted items dropped!");
+                player.sendMessage(Component.text("Inventory full, some crafted items dropped!", NamedTextColor.YELLOW));
             } else {
                 itemsMovedToInv = totalCraftedAmount;
             }
@@ -380,20 +379,6 @@ public class CraftingGUIListener implements Listener {
                  return false; // Consumption failed
             }
         }
-        // TODO: Add vanilla recipe ingredient consumption if vanilla recipes are supported
-        /*
-        else {
-             Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
-             if (vanillaRecipe != null && vanillaRecipe.getResult().isSimilar(resultItemFromSlot)) {
-                 // Implement vanilla ingredient consumption logic here
-                 // This is more complex as it needs to handle item types and amounts correctly,
-                 // including container items (buckets, bottles).
-                 // For simplicity, often omitted if focusing on custom recipes.
-                 log.finer("Vanilla recipe matched, but consumption not implemented in this GUI.");
-                 return false; // Or return true if implemented
-             }
-        }
-        */
 
         log.warning("Attempted craft, but no matching recipe found for result: " + resultItemFromSlot.getType());
         return false; // No matching recipe found for the item in the result slot
@@ -412,17 +397,13 @@ public class CraftingGUIListener implements Listener {
         CustomRecipe customRecipe = recipeManager.findMatchingRecipe(currentMatrix);
 
         if (customRecipe == null || !customRecipe.getResult().isSimilar(resultItem)) {
-            // TODO: Handle vanilla recipe max craft calculation if needed
+            // Vanilla recipe max craft calculation was here, removing as it's out of scope/unreliable.
             return 0; // No matching custom recipe for the current result
         }
 
         int maxPossibleCrafts = Integer.MAX_VALUE;
 
         if (customRecipe.getType() == CustomRecipe.RecipeType.SHAPED) {
-            // Map to store total required amount per unique ingredient item in the grid
-            Map<Integer, Integer> totalRequiredPerSlot = new HashMap<>();
-            Map<Integer, Integer> availablePerSlot = new HashMap<>();
-
             for (int i = 0; i < 9; i++) {
                 RequiredItem required = customRecipe.getRequirementForMatrixIndex(i);
                 if (required != null) {
@@ -442,7 +423,6 @@ public class CraftingGUIListener implements Listener {
              return Math.max(0, maxPossibleCrafts); // Ensure non-negative
 
         } else if (customRecipe.getType() == CustomRecipe.RecipeType.SHAPELESS) {
-            // TODO: Implement max craft calculation for shapeless recipes
             return 1; // Placeholder: Assume can only craft 1 for now
         }
 

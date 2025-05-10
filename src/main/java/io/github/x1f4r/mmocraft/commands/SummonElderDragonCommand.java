@@ -5,8 +5,10 @@ import io.github.x1f4r.mmocraft.entities.EntityManager; // Use EntityManager
 import io.github.x1f4r.mmocraft.stats.EntityStatsManager; // Needed to ensure stats applied first
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
 import io.github.x1f4r.mmocraft.core.MMOPlugin; // Import for logger
-
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.EntityType;
@@ -19,12 +21,10 @@ import org.jetbrains.annotations.NotNull;
 
 public class SummonElderDragonCommand implements CommandExecutor {
 
-    private final MMOCore core;
     private final EntityManager entityManager;
     private final EntityStatsManager entityStatsManager;
 
     public SummonElderDragonCommand(MMOCore core) {
-        this.core = core;
         // Assuming EntityManager exists in core now
         this.entityManager = core.getEntityManager();
         this.entityStatsManager = core.getEntityStatsManager();
@@ -39,7 +39,7 @@ public class SummonElderDragonCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (!player.hasPermission("mmocraft.command.summon.elderdragon")) {
-            player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            player.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return true;
         }
 
@@ -47,14 +47,14 @@ public class SummonElderDragonCommand implements CommandExecutor {
 
         if (NBTKeys.MOB_TYPE_KEY == null) {
             MMOPlugin.getMMOLogger().severe("MOB_TYPE_KEY is null! Cannot summon Elder Dragon properly.");
-            player.sendMessage(ChatColor.RED + "Error: Mob Type Key not initialized. Please check server logs.");
+            player.sendMessage(Component.text("Error: Mob Type Key not initialized. Please check server logs.", NamedTextColor.RED));
             return true;
         }
 
         EnderDragon dragon = (EnderDragon) spawnLocation.getWorld().spawnEntity(spawnLocation, EntityType.ENDER_DRAGON);
 
         // Set visual name
-        dragon.setCustomName(ChatColor.translateAlternateColorCodes('&', "&5&lElder Dragon"));
+        dragon.customName(LegacyComponentSerializer.legacyAmpersand().deserialize("&5&lElder Dragon"));
         dragon.setCustomNameVisible(true);
 
         // Tag it BEFORE registering stats, so EntityStatsManager can potentially use the tag
@@ -68,9 +68,11 @@ public class SummonElderDragonCommand implements CommandExecutor {
         // Now, start the custom AI using the EntityManager
         if (entityManager != null) {
             entityManager.startElderDragonAI(dragon);
-            player.sendMessage(ChatColor.GREEN + "An " + ChatColor.DARK_PURPLE + ChatColor.BOLD + "Elder Dragon" + ChatColor.GREEN + " with custom AI has been summoned!");
+            player.sendMessage(Component.text("An ", NamedTextColor.GREEN)
+                .append(Component.text("Elder Dragon", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD))
+                .append(Component.text(" with custom AI has been summoned!", NamedTextColor.GREEN)));
         } else {
-             player.sendMessage(ChatColor.RED + "Error: EntityManager not available to start AI.");
+             player.sendMessage(Component.text("Error: EntityManager not available to start AI.", NamedTextColor.RED));
              MMOPlugin.getMMOLogger().severe("SummonElderDragonCommand executed but EntityManager was null in MMOCore!");
              // Dragon still spawns with custom stats, just no custom AI behaviour
         }

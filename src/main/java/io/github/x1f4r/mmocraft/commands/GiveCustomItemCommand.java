@@ -2,8 +2,9 @@ package io.github.x1f4r.mmocraft.commands;
 
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.items.ItemManager; // Get manager from core
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -11,6 +12,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,23 +24,21 @@ import java.util.stream.Collectors;
 
 public class GiveCustomItemCommand implements CommandExecutor, TabCompleter {
 
-    private final MMOCore core;
     private final ItemManager itemManager;
 
     public GiveCustomItemCommand(MMOCore core) {
-        this.core = core;
         this.itemManager = core.getItemManager();
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("mmocraft.command.givecustomitem")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return true;
         }
 
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /" + label + " <item_id> [amount] [player]");
+            sender.sendMessage(Component.text("Usage: /" + label + " <item_id> [amount] [player]", NamedTextColor.RED));
             return true;
         }
 
@@ -46,8 +46,8 @@ public class GiveCustomItemCommand implements CommandExecutor, TabCompleter {
         ItemStack customItem = itemManager.getItem(itemId); // getItem already returns a clone
 
         if (customItem == null || customItem.getType() == Material.AIR) {
-            sender.sendMessage(ChatColor.RED + "Error: Custom item with ID '" + itemId + "' not found.");
-            sender.sendMessage(ChatColor.YELLOW + "Available items: " + String.join(", ", itemManager.getAllItemIds()));
+            sender.sendMessage(Component.text("Error: Custom item with ID '" + itemId + "' not found.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Available items: " + String.join(", ", itemManager.getAllItemIds()), NamedTextColor.YELLOW));
             return true;
         }
 
@@ -56,11 +56,11 @@ public class GiveCustomItemCommand implements CommandExecutor, TabCompleter {
             try {
                 amount = Integer.parseInt(args[1]);
                 if (amount < 1) {
-                    sender.sendMessage(ChatColor.RED + "Amount must be at least 1.");
+                    sender.sendMessage(Component.text("Amount must be at least 1.", NamedTextColor.RED));
                     return true;
                 }
             } catch (NumberFormatException e) {
-                sender.sendMessage(ChatColor.RED + "Invalid amount: '" + args[1] + "'. Must be a number.");
+                sender.sendMessage(Component.text("Invalid amount: '" + args[1] + "'. Must be a number.", NamedTextColor.RED));
                 return true;
             }
         }
@@ -69,14 +69,14 @@ public class GiveCustomItemCommand implements CommandExecutor, TabCompleter {
         if (args.length >= 3) {
             targetPlayer = Bukkit.getPlayerExact(args[2]);
             if (targetPlayer == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[2] + "' not found or is offline.");
+                sender.sendMessage(Component.text("Player '" + args[2] + "' not found or is offline.", NamedTextColor.RED));
                 return true;
             }
         } else {
             if (sender instanceof Player) {
                 targetPlayer = (Player) sender;
             } else {
-                sender.sendMessage(ChatColor.RED + "You must specify a player when running from console.");
+                sender.sendMessage(Component.text("You must specify a player when running from console.", NamedTextColor.RED));
                 return true;
             }
         }
@@ -93,20 +93,31 @@ public class GiveCustomItemCommand implements CommandExecutor, TabCompleter {
             // Add to inventory, drop leftovers if full
             targetPlayer.getInventory().addItem(itemToGive).forEach((index, item) -> {
                 targetPlayer.getWorld().dropItemNaturally(targetPlayer.getLocation(), item);
-                targetPlayer.sendMessage(ChatColor.YELLOW + "Your inventory was full, some items dropped!");
+                targetPlayer.sendMessage(Component.text("Your inventory was full, some items dropped!", NamedTextColor.YELLOW));
             });
             remainingAmount -= stackAmount;
         }
 
         // Confirmation message
-        String itemNameDisplay = customItem.hasItemMeta() && customItem.getItemMeta().hasDisplayName() ?
-                customItem.getItemMeta().getDisplayName() : ChatColor.GOLD + itemId; // Use item ID if no display name
+        Component itemNameDisplay;
+        ItemMeta meta = customItem.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            itemNameDisplay = meta.displayName();
+        } else {
+            itemNameDisplay = Component.text(itemId, NamedTextColor.GOLD);
+        }
 
-        sender.sendMessage(ChatColor.GREEN + "Gave " + ChatColor.AQUA + amount + "x " + itemNameDisplay +
-                ChatColor.GREEN + " to " + ChatColor.YELLOW + targetPlayer.getName() + ChatColor.GREEN + ".");
+        sender.sendMessage(Component.text("Gave ", NamedTextColor.GREEN)
+                .append(Component.text(amount + "x ", NamedTextColor.AQUA))
+                .append(itemNameDisplay)
+                .append(Component.text(" to ", NamedTextColor.GREEN))
+                .append(Component.text(targetPlayer.getName(), NamedTextColor.YELLOW))
+                .append(Component.text(".", NamedTextColor.GREEN)));
         if (sender != targetPlayer) {
-            targetPlayer.sendMessage(ChatColor.GREEN + "You received " + ChatColor.AQUA + amount + "x " + itemNameDisplay +
-                    ChatColor.GREEN + ".");
+            targetPlayer.sendMessage(Component.text("You received ", NamedTextColor.GREEN)
+                    .append(Component.text(amount + "x ", NamedTextColor.AQUA))
+                    .append(itemNameDisplay)
+                    .append(Component.text(".", NamedTextColor.GREEN)));
         }
 
         return true;

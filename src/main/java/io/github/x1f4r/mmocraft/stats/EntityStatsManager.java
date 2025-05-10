@@ -17,22 +17,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class EntityStatsManager {
 
-    private final MMOCore core;
     private final MMOPlugin plugin;
     private final Logger log;
-    private final Map<UUID, EntityStats> entityStatsCache = new HashMap<>();
+    private final Map<UUID, EntityStats> entityStatsCache = new ConcurrentHashMap<>();
     private final Map<EntityType, EntityStats> mobConfigStats = new HashMap<>();
     private final File mobsFile;
     // Map to store original modifiers BEFORE we apply our base stats
-    private final Map<UUID, Map<Attribute, List<AttributeModifier>>> originalModifiers = new HashMap<>();
+    private final Map<UUID, Map<Attribute, List<AttributeModifier>>> originalModifiers = new ConcurrentHashMap<>();
 
     public EntityStatsManager(MMOCore core) {
-        this.core = core;
         this.plugin = core.getPlugin();
         this.log = MMOPlugin.getMMOLogger();
         this.mobsFile = new File(plugin.getDataFolder(), "mobs.yml");
@@ -157,8 +156,7 @@ public class EntityStatsManager {
         // Apply these stats as base values to the entity's attributes
         applyCustomStatsAsBaseAttributes(entity, statsToApply);
 
-        // Put the applied stats object into the cache
-        entityStatsCache.put(entity.getUniqueId(), statsToApply);
+        // computeIfAbsent in getStats will handle caching the returned statsToApply.
         return statsToApply;
     }
 
@@ -201,12 +199,17 @@ public class EntityStatsManager {
              log.finer("Entity " + entity.getType() + " missing Movement Speed attribute (might be normal for some).");
         }
 
-        // TODO: Apply other stats like Attack Damage if needed in mobs.yml
-        // AttributeInstance attackInstance = entity.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
-        // if (attackInstance != null && stats.getStrength() != 0) { // Example: If strength directly sets base damage
-        //     storeAndRemoveOriginalAttributeModifiers(entity, Attribute.GENERIC_ATTACK_DAMAGE);
-        //     attackInstance.setBaseValue(stats.getStrength()); // Or apply as modifier depending on design
-        // }
+        // Apply Strength as Attack Damage
+        AttributeInstance attackInstance = entity.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
+        if (attackInstance != null && stats.getStrength() != 0) { // Check if strength is non-zero in config
+            storeAndRemoveOriginalAttributeModifiers(entity, Attribute.GENERIC_ATTACK_DAMAGE);
+            attackInstance.setBaseValue(stats.getStrength());
+            log.finer("Applied strength (" + stats.getStrength() + ") as base attack damage to " + entity.getType());
+        } else if (attackInstance != null && stats.getStrength() == 0) {
+            // If strength is 0 in config, ensure no custom modifiers remain and reset to vanilla base
+            storeAndRemoveOriginalAttributeModifiers(entity, Attribute.GENERIC_ATTACK_DAMAGE); // Clears our potential old ones
+            attackInstance.setBaseValue(attackInstance.getDefaultValue()); // Reset to default base
+        }
     }
 
 
@@ -216,12 +219,14 @@ public class EntityStatsManager {
 
         UUID entityUuid = entity.getUniqueId();
         // Check if we haven't already stored modifiers for this entity and attribute
-        if (!originalModifiers.containsKey(entityUuid) || !originalModifiers.get(entityUuid).containsKey(attribute)) {
+        Map<Attribute, List<AttributeModifier>> entitySpecificOriginalModifiers =
+            originalModifiers.computeIfAbsent(entityUuid, k -> new ConcurrentHashMap<>());
+
+        if (!entitySpecificOriginalModifiers.containsKey(attribute)) {
             // Store a copy of current modifiers BEFORE removing them
             List<AttributeModifier> currentModifiersCopy = new ArrayList<>(instance.getModifiers());
-             originalModifiers.computeIfAbsent(entityUuid, k -> new HashMap<>())
-                    .put(attribute, currentModifiersCopy);
-             log.finest("Stored " + currentModifiersCopy.size() + " original modifiers for " + attribute + " on " + entity.getType());
+            entitySpecificOriginalModifiers.put(attribute, currentModifiersCopy);
+            log.finest("Stored " + currentModifiersCopy.size() + " original modifiers for " + attribute + " on " + entity.getType());
 
             // Remove all existing modifiers to apply a clean base value later
             for (AttributeModifier modifier : currentModifiersCopy) {

@@ -3,10 +3,9 @@ package io.github.x1f4r.mmocraft.commands;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
 import io.github.x1f4r.mmocraft.stats.PlayerStats; // Correct package
-import io.github.x1f4r.mmocraft.core.MMOPlugin; // Import for logger if needed directly
-
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.Command;
@@ -25,18 +24,16 @@ import java.util.stream.Collectors;
 
 public class AdminStatsCommand implements CommandExecutor, TabCompleter {
 
-    private final MMOCore core;
     private final PlayerStatsManager statsManager;
 
     public AdminStatsCommand(MMOCore core) {
-        this.core = core;
         this.statsManager = core.getPlayerStatsManager();
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("mmocraft.command.adminstats")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return true;
         }
 
@@ -53,7 +50,7 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
 
         Player target = Bukkit.getPlayer(playerName);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + playerName + "' not found.");
+            sender.sendMessage(Component.text("Player '" + playerName + "' not found.", NamedTextColor.RED));
             return true;
         }
 
@@ -61,7 +58,7 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
         try {
             amount = Double.parseDouble(amountStr);
         } catch (NumberFormatException e) {
-            sender.sendMessage(ChatColor.RED + "Invalid amount: " + amountStr);
+            sender.sendMessage(Component.text("Invalid amount: " + amountStr, NamedTextColor.RED));
             return true;
         }
 
@@ -71,7 +68,7 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
         switch (statType) {
             case "health":
                 if (maxHealthAttr == null) {
-                    sender.sendMessage(ChatColor.RED + "Could not access health attribute for " + target.getName());
+                    sender.sendMessage(Component.text("Could not access health attribute for " + target.getName(), NamedTextColor.RED));
                     return true;
                 }
                 switch (subType) {
@@ -88,7 +85,7 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
                         // No need to call statsManager.scheduleStatsUpdate here, Bukkit handles attribute changes.
                         break;
                     default:
-                        sender.sendMessage(ChatColor.RED + "Invalid health sub-type. Use 'current' or 'max'.");
+                        sender.sendMessage(Component.text("Invalid health sub-type. Use 'current' or 'max'.", NamedTextColor.RED));
                         return true;
                 }
                 break;
@@ -106,17 +103,10 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
                         statsManager.scheduleStatsUpdate(target);
                         break;
                     default:
-                        sender.sendMessage(ChatColor.RED + "Invalid mana sub-type. Use 'current' or 'max'.");
+                        sender.sendMessage(Component.text("Invalid mana sub-type. Use 'current' or 'max'.", NamedTextColor.RED));
                         return true;
                 }
                 break;
-
-            // TODO: Add cases for modifying other BASE stats (strength, defense, etc.) in PlayerStats
-            // case "strength":
-            //    if (!subType.equals("base")) { sender.sendMessage(ChatColor.RED + "Only 'base' sub-type allowed for strength."); return true; }
-            //    handleNumericOperation(sender, target, operation, (int)amount, targetStats.getBaseStrength(), targetStats::setBaseStrength, () -> Integer.MAX_VALUE, "Strength (Base)");
-            //    statsManager.scheduleStatsUpdate(target); // Update needed
-            //    break;
 
             default:
                 sendUsage(sender, label);
@@ -135,7 +125,7 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
             case "set": newValue = amount; operationText = "set to"; break;
             case "add": newValue = currentValue + amount; operationText = "increased by"; break;
             case "remove": newValue = currentValue - amount; operationText = "decreased by"; break;
-            default: sender.sendMessage(ChatColor.RED + "Invalid operation: " + operation); return;
+            default: sender.sendMessage(Component.text("Invalid operation: " + operation, NamedTextColor.RED)); return;
         }
         // Clamp value between 0 and maxProvider result
         newValue = Math.max(0.0, Math.min(newValue, maxProvider.get()));
@@ -152,7 +142,7 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
             finalValue = newValue; // Fallback
         }
 
-        sender.sendMessage(ChatColor.GREEN + statName + " for " + target.getName() + " " + operationText + " " + String.format("%.2f", amount) + ". New value: " + String.format("%.2f", finalValue));
+        sender.sendMessage(Component.text(statName + " for " + target.getName() + " " + operationText + " " + String.format("%.2f", amount) + ". New value: " + String.format("%.2f", finalValue), NamedTextColor.GREEN));
     }
 
     // Overload for integer values (Mana, Base Stats)
@@ -165,7 +155,7 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
             case "set": newValue = amount; operationText = "set to"; break;
             case "add": newValue = currentValue + amount; operationText = "increased by"; break;
             case "remove": newValue = currentValue - amount; operationText = "decreased by"; break;
-            default: sender.sendMessage(ChatColor.RED + "Invalid operation: " + operation); return;
+            default: sender.sendMessage(Component.text("Invalid operation: " + operation, NamedTextColor.RED)); return;
         }
         newValue = Math.max(0, Math.min(newValue, maxProvider.get()));
         setter.accept(newValue);
@@ -183,18 +173,18 @@ public class AdminStatsCommand implements CommandExecutor, TabCompleter {
             finalValue = newValue; // Fallback
         }
 
-        sender.sendMessage(ChatColor.GREEN + statName + " for " + target.getName() + " " + operationText + " " + amount + ". New value: " + finalValue);
+        sender.sendMessage(Component.text(statName + " for " + target.getName() + " " + operationText + " " + amount + ". New value: " + finalValue, NamedTextColor.GREEN));
     }
 
 
     private void sendUsage(CommandSender sender, String label) {
-        sender.sendMessage(ChatColor.RED + "Usage: /" + label + " <statType> <subType> <operation> <player> <amount>");
-        sender.sendMessage(ChatColor.YELLOW + "Stat Types: health, mana"); // Add strength, defense etc. when implemented
-        sender.sendMessage(ChatColor.YELLOW + "Sub Types (health/mana): current, max");
+        sender.sendMessage(Component.text("Usage: /" + label + " <statType> <subType> <operation> <player> <amount>", NamedTextColor.RED));
+        sender.sendMessage(Component.text("Stat Types: health, mana", NamedTextColor.YELLOW)); // Add strength, defense etc. when implemented
+        sender.sendMessage(Component.text("Sub Types (health/mana): current, max", NamedTextColor.YELLOW));
         // sender.sendMessage(ChatColor.YELLOW + "Sub Types (strength/defense/...): base");
-        sender.sendMessage(ChatColor.YELLOW + "Operations: set, add, remove");
-        sender.sendMessage(ChatColor.YELLOW + "Example: /" + label + " health current set Notch 20");
-        sender.sendMessage(ChatColor.YELLOW + "Example: /" + label + " mana max add Notch 50");
+        sender.sendMessage(Component.text("Operations: set, add, remove", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Example: /" + label + " health current set Notch 20", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Example: /" + label + " mana max add Notch 50", NamedTextColor.YELLOW));
     }
 
     @Nullable

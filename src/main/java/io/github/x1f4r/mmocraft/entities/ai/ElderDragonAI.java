@@ -3,14 +3,15 @@ package io.github.x1f4r.mmocraft.entities.ai;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
 // No direct need for EntityManager here, core can provide if needed, but likely not
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Fireball;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -23,7 +24,6 @@ import java.util.stream.Collectors;
 
 public class ElderDragonAI extends BukkitRunnable {
 
-    private final MMOCore core;
     private final MMOPlugin plugin;
     private final Logger log;
     private final UUID dragonUniqueId;
@@ -41,7 +41,6 @@ public class ElderDragonAI extends BukkitRunnable {
 
 
     public ElderDragonAI(MMOCore core, EnderDragon dragon) {
-        this.core = core;
         this.plugin = core.getPlugin();
         this.log = MMOPlugin.getMMOLogger();
         this.dragonUniqueId = dragon.getUniqueId();
@@ -94,7 +93,9 @@ public class ElderDragonAI extends BukkitRunnable {
         if (targets.isEmpty() || !dragon.isValid()) return;
         log.finer("Elder Dragon performing Fireball Volley");
         // Consider broadcasting only to nearby players?
-        dragon.getWorld().getPlayers().forEach(p -> p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + dragon.getCustomName() + " unleashes a Fireball Volley!"));
+        Component dragonName = dragon.customName() != null ? dragon.customName() : Component.text(dragon.getName());
+        dragon.getWorld().getPlayers().forEach(p -> p.sendMessage(dragonName.color(NamedTextColor.RED).decorate(TextDecoration.BOLD)
+            .append(Component.text(" unleashes a Fireball Volley!", NamedTextColor.RED))));
         dragon.getWorld().playSound(dragon.getLocation(), Sound.ENTITY_GHAST_SHOOT, 2.0f, 0.5f);
 
         int volleyCount = 3 + random.nextInt(3);
@@ -128,7 +129,9 @@ public class ElderDragonAI extends BukkitRunnable {
     private void performLightningStrike(EnderDragon dragon, Player target) {
          if (!dragon.isValid() || target == null || !target.isOnline()) return;
          log.finer("Elder Dragon performing Lightning Strike on " + target.getName());
-         dragon.getWorld().getPlayers().forEach(p -> p.sendMessage(ChatColor.YELLOW + "" + ChatColor.BOLD + dragon.getCustomName() + " calls down lightning upon " + target.getName() + "!"));
+         Component dragonName = dragon.customName() != null ? dragon.customName() : Component.text(dragon.getName());
+         dragon.getWorld().getPlayers().forEach(p -> p.sendMessage(dragonName.color(NamedTextColor.YELLOW).decorate(TextDecoration.BOLD)
+            .append(Component.text(" calls down lightning upon " + target.getName() + "!", NamedTextColor.YELLOW))));
          dragon.getWorld().playSound(dragon.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.5f, 1.0f);
 
          Location targetLoc = target.getLocation();
@@ -147,7 +150,9 @@ public class ElderDragonAI extends BukkitRunnable {
      private void performChargePlayer(EnderDragon dragon, Player target) {
          if (!dragon.isValid() || target == null || !target.isOnline()) return;
          log.finer("Elder Dragon performing Charge Player towards " + target.getName());
-         dragon.getWorld().getPlayers().forEach(p -> p.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + dragon.getCustomName() + " focuses its rage on " + target.getName() + "!"));
+         Component dragonName = dragon.customName() != null ? dragon.customName() : Component.text(dragon.getName());
+         dragon.getWorld().getPlayers().forEach(p -> p.sendMessage(dragonName.color(NamedTextColor.DARK_RED).decorate(TextDecoration.BOLD)
+            .append(Component.text(" focuses its rage on " + target.getName() + "!", NamedTextColor.DARK_RED))));
          dragon.getWorld().playSound(dragon.getLocation(), Sound.ENTITY_ENDER_DRAGON_AMBIENT, 2.0f, 0.7f);
          dragon.setPhase(EnderDragon.Phase.CHARGE_PLAYER);
      }

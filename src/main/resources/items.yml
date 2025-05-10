@@ -44,6 +44,30 @@ items:
       CRIT_CHANCE: 2
       FORAGING_SPEED: 100
 
+  tree_shovel:
+    material: WOODEN_SHOVEL
+    name: "&aTree Shovel"
+    lore:
+      - "&7Good for digging."
+      - "&7Mining Speed: &e+80"
+    unbreakable: true
+    item_flags: [ HIDE_ENCHANTS, HIDE_UNBREAKABLE, HIDE_ATTRIBUTES ]
+    attributes: { GENERIC_ATTACK_DAMAGE: 2.5:ADD_NUMBER:HAND }
+    custom_stats:
+      STRENGTH: 3
+      MINING_SPEED: 80
+
+  tree_hoe:
+    material: WOODEN_HOE
+    name: "&aTree Hoe"
+    lore:
+      - "&7Useful for tilling soil."
+    unbreakable: true
+    item_flags: [ HIDE_ENCHANTS, HIDE_UNBREAKABLE, HIDE_ATTRIBUTES ]
+    attributes: { GENERIC_ATTACK_DAMAGE: 1.0:ADD_NUMBER:HAND }
+    custom_stats:
+      STRENGTH: 1
+
   tree_helmet:
     material: LEATHER_HELMET
     name: "&aTree Helmet"
@@ -112,7 +136,7 @@ items:
       - ""
       - "&bMana Cost: &3100"
     unbreakable: true
-    enchants: { DAMAGE_ALL: 5 , LOOT_BONUS_MOBS: 3 }
+    enchants: { minecraft:sharpness: 5 , minecraft:looting: 3 }
     item_flags: [ HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes: { GENERIC_ATTACK_DAMAGE: 10.0:ADD_NUMBER:HAND } # Base vanilla damage
     custom_stats:
@@ -139,7 +163,7 @@ items:
       - ""
       - "&bMana Cost: &350"
     unbreakable: true
-    enchants: { DAMAGE_ALL: 3 }
+    enchants: { minecraft:sharpness: 3 }
     item_flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
     attributes: { GENERIC_ATTACK_DAMAGE: 6.0:ADD_NUMBER:HAND }
     custom_stats:

@@ -2,6 +2,7 @@ package io.github.x1f4r.mmocraft.items; // Keep in items package
 
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
+// import io.github.x1f4r.mmocraft.items.abilities.PlayerAbilityManager; // Removed unused and incorrect import
 import io.github.x1f4r.mmocraft.utils.NBTKeys;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -21,8 +22,8 @@ import java.util.logging.Logger;
 
 public class ArmorSetListener implements Listener {
 
-    private final MMOCore core;
-    private final MMOPlugin plugin;
+    // private final MMOCore core; // Removed unused field
+    // private final MMOPlugin plugin; // Removed unused field
     private final Logger log;
 
     // Define item IDs for armor sets
@@ -32,12 +33,15 @@ public class ArmorSetListener implements Listener {
     private static final String TREE_BOOTS_ID = "tree_boots";
 
     // Add IDs for other sets like Ender Armor if they have set bonuses
-    private static final String ENDER_HELMET_ID = "ender_helmet";
-    // ... etc.
+    // private static final String ENDER_LEGGINGS_ID = "ender_leggings"; // Removed
+    // private static final String ENDER_BOOTS_ID = "ender_boots"; // Removed
+
+    // Constants for Potion Effects
+    // private static final PotionEffectType ENDER_STRENGTH_EFFECT_TYPE = PotionEffectType.INCREASE_DAMAGE; // Removed
 
     public ArmorSetListener(MMOCore core) {
-        this.core = core;
-        this.plugin = core.getPlugin();
+        // this.core = core; // Removed
+        // this.plugin = core.getPlugin(); // Removed
         this.log = MMOPlugin.getMMOLogger();
     }
 

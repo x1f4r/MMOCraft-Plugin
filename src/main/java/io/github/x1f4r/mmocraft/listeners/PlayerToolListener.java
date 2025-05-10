@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 
 public class PlayerToolListener implements Listener {
 
-    private final MMOCore core;
+    // private final MMOCore core; // Removed
     private final PlayerStatsManager statsManager;
     private final Logger log;
 
@@ -68,7 +68,7 @@ public class PlayerToolListener implements Listener {
 
 
     public PlayerToolListener(MMOCore core) {
-        this.core = core;
+        // this.core = core; // Removed assignment
         this.statsManager = core.getPlayerStatsManager();
         this.log = MMOPlugin.getMMOLogger();
     }
@@ -187,10 +187,10 @@ public class PlayerToolListener implements Listener {
             ItemMeta iMeta = tool.getItemMeta();
             Damageable dMeta = (Damageable) iMeta;
             if (!dMeta.isUnbreakable()) {
-                // TODO: Apply unbreaking enchantment effect if present
                 int unbreakingLevel = tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.DURABILITY);
-                // Chance to ignore durability loss = 1 / (Unbreaking Level + 1)
-                if (Math.random() * (unbreakingLevel + 1) < 1.0) { // Only take damage sometimes based on unbreaking
+                // Chance to IGNORE durability loss is unbreakingLevel / (unbreakingLevel + 1)
+                // So, chance to TAKE damage is 1 - (unbreakingLevel / (unbreakingLevel + 1)) = 1 / (unbreakingLevel + 1)
+                if (Math.random() < (1.0 / (unbreakingLevel + 1.0))) { // Apply Unbreaking
                     dMeta.setDamage(dMeta.getDamage() + 1);
                     tool.setItemMeta(dMeta); // Apply updated meta
                     if (dMeta.getDamage() >= tool.getType().getMaxDurability()) {

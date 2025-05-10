@@ -23,12 +23,12 @@ import java.util.logging.Logger;
 
 public class BowListener implements Listener {
 
-    private final MMOCore core;
+    // private final MMOCore core; // Removed
     private final PlayerStatsManager statsManager;
     private final Logger log;
 
     public BowListener(MMOCore core) {
-        this.core = core;
+        // this.core = core; // Removed assignment
         this.statsManager = core.getPlayerStatsManager();
         this.log = MMOPlugin.getMMOLogger();
     }
