@@ -21,6 +21,8 @@ import io.github.x1f4r.mmocraft.items.ArmorSetListener;
 import io.github.x1f4r.mmocraft.crafting.CraftingGUIListener;
 import io.github.x1f4r.mmocraft.combat.PlayerDamageListener;
 import io.github.x1f4r.mmocraft.entities.MobDropListener;
+import io.github.x1f4r.mmocraft.listeners.CompactorGUIListener;
+import io.github.x1f4r.mmocraft.listeners.CompactorSystemListener;
 
 
 import org.bukkit.Bukkit;
@@ -110,6 +112,10 @@ public class MMOCore {
         pm.registerEvents(new PlayerToolListener(this), plugin);
         pm.registerEvents(new BowListener(this), plugin);
         pm.registerEvents(new PlayerSaturationListener(), plugin); // <<< USES CORRECT CLASS NOW
+
+        // Personal Compactor Listener
+        pm.registerEvents(new CompactorGUIListener(this), plugin);
+        pm.registerEvents(new CompactorSystemListener(this), plugin);
 
         log.info("Listeners registered.");
     }

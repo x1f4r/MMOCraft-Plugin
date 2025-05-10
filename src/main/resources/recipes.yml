@@ -61,6 +61,19 @@ recipes:
     ingredients:
       L: { type: TAG, value: LOGS, amount: 64 }
 
+  aspect_of_the_dragons:
+    type: SHAPED
+    result: { item_id: aspect_of_the_dragons }
+    shape:
+      - "DBD"
+      - "BSB"
+      - "BNB"
+    ingredients:
+      B: { type: MATERIAL, value: DRAGON_BREATH, amount: 1 }
+      D: { type: ITEM, value: enchanted_diamond, amount: 1 }
+      S: { type: MATERIAL, value: NETHER_STAR, amount: 1 }
+      N: { type: MATERIAL, value: NETHERITE_INGOT, amount: 1 }
+
   aspect_of_the_end:
     type: SHAPED
     result: { item_id: aspect_of_the_end }
@@ -83,4 +96,271 @@ recipes:
     ingredients:
       S: { type: MATERIAL, value: STRING, amount: 64 }
       L: { type: TAG, value: LOGS, amount: 64 }
+
+  # --- Hypixel Skyblock Inspired Recipes ---
+  frozen_scythe:
+    type: SHAPED
+    result: { item_id: frozen_scythe }
+    shape:
+      - "PIP"
+      - " S "
+      - " S "
+    ingredients:
+      P: { type: MATERIAL, value: PACKED_ICE, amount: 32 }
+      I: { type: MATERIAL, value: IRON_INGOT, amount: 16 }
+      S: { type: MATERIAL, value: STICK, amount: 1 }
+
+  glacial_scythe:
+    type: SHAPED
+    result: { item_id: glacial_scythe }
+    shape:
+      - "DBD"
+      - " F "
+      - " N "
+    ingredients:
+      D: { type: MATERIAL, value: DIAMOND_BLOCK, amount: 1 }
+      B: { type: MATERIAL, value: BLUE_ICE, amount: 64 }
+      F: { type: ITEM, value: frozen_scythe, amount: 1 }
+      N: { type: MATERIAL, value: NETHERITE_INGOT, amount: 1 }
+
+  shadow_fragment:
+    type: SHAPELESS
+    result: { item_id: shadow_fragment, amount: 1 }
+    ingredients:
+      - { type: MATERIAL, value: OBSIDIAN, amount: 4 }
+      - { type: MATERIAL, value: AMETHYST_SHARD, amount: 4 }
+      - { type: MATERIAL, value: NETHER_STAR, amount: 1 } # Kept Nether Star for power
+
+  shadow_assassin_helmet:
+    type: SHAPED # Smithing type not directly supported, use shaped for now
+    result: { item_id: shadow_assassin_helmet }
+    shape:
+      - "FFF"
+      - "FHF"
+      - "   "
+    ingredients:
+      F: { type: ITEM, value: shadow_fragment, amount: 1 }
+      H: { type: MATERIAL, value: NETHERITE_HELMET, amount: 1 }
+
+  shadow_assassin_chestplate:
+    type: SHAPED
+    result: { item_id: shadow_assassin_chestplate }
+    shape:
+      - "F F"
+      - "FCF"
+      - "FFF"
+    ingredients:
+      F: { type: ITEM, value: shadow_fragment, amount: 1 }
+      C: { type: MATERIAL, value: NETHERITE_CHESTPLATE, amount: 1 }
+
+  shadow_assassin_leggings:
+    type: SHAPED
+    result: { item_id: shadow_assassin_leggings }
+    shape:
+      - "FFF"
+      - "FLF"
+      - "F F"
+    ingredients:
+      F: { type: ITEM, value: shadow_fragment, amount: 1 }
+      L: { type: MATERIAL, value: NETHERITE_LEGGINGS, amount: 1 }
+
+  shadow_assassin_boots:
+    type: SHAPED
+    result: { item_id: shadow_assassin_boots }
+    shape:
+      - "   "
+      - "F F"
+      - "FBF"
+    ingredients:
+      F: { type: ITEM, value: shadow_fragment, amount: 1 }
+      B: { type: MATERIAL, value: NETHERITE_BOOTS, amount: 1 }
+
+  treecapitator:
+    type: SHAPED
+    result: { item_id: treecapitator }
+    shape:
+      - "GGG"
+      - "TAT"
+      - " S "
+    ingredients:
+      G: { type: MATERIAL, value: GOLD_BLOCK, amount: 1 }
+      T: { type: ITEM, value: tree_axe, amount: 1 } # Using existing custom tree_axe
+      A: { type: MATERIAL, value: DIAMOND_AXE, amount: 1 }
+      S: { type: MATERIAL, value: NETHERITE_SCRAP, amount: 4 }
+
+  # --- Enchanted Materials & Compactors ---
+  enchanted_coal:
+    type: SHAPED
+    result: { item_id: enchanted_coal, amount: 1 }
+    shape:
+      - "CCC"
+      - "C C"
+      - "CCC"
+    ingredients:
+      C: { type: MATERIAL, value: COAL, amount: 20 } # 8*20 = 160 coal
+
+  enchanted_iron_ingot:
+    type: SHAPED
+    result: { item_id: enchanted_iron_ingot, amount: 1 }
+    shape:
+      - "III"
+      - "I I"
+      - "III"
+    ingredients:
+      I: { type: MATERIAL, value: IRON_INGOT, amount: 20 } # 160 iron ingots
+
+  enchanted_gold_ingot:
+    type: SHAPED
+    result: { item_id: enchanted_gold_ingot, amount: 1 }
+    shape:
+      - "GGG"
+      - "G G"
+      - "GGG"
+    ingredients:
+      G: { type: MATERIAL, value: GOLD_INGOT, amount: 20 } # 160 gold ingots
+
+  enchanted_diamond:
+    type: SHAPED
+    result: { item_id: enchanted_diamond, amount: 1 }
+    shape:
+      - "DDD"
+      - "D D"
+      - "DDD"
+    ingredients:
+      D: { type: MATERIAL, value: DIAMOND, amount: 20 } # 160 diamonds
+
+  enchanted_emerald:
+    type: SHAPED
+    result: { item_id: enchanted_emerald, amount: 1 }
+    shape:
+      - "EEE"
+      - "E E"
+      - "EEE"
+    ingredients:
+      E: { type: MATERIAL, value: EMERALD, amount: 20 } # 160 emeralds
+
+  enchanted_lapis_lazuli: # Results in Enchanted Lapis Block as per items.yml
+    type: SHAPED
+    result: { item_id: enchanted_lapis_lazuli, amount: 1 }
+    shape:
+      - "LLL"
+      - "L L"
+      - "LLL"
+    ingredients:
+      L: { type: MATERIAL, value: LAPIS_LAZULI, amount: 20 } # 160 Lapis Lazuli items
+
+  enchanted_redstone: # Results in Enchanted Redstone Block as per items.yml
+    type: SHAPED
+    result: { item_id: enchanted_redstone, amount: 1 }
+    shape:
+      - "RRR"
+      - "R R"
+      - "RRR"
+    ingredients:
+      R: { type: MATERIAL, value: REDSTONE, amount: 20 } # 160 Redstone dust
+
+  enchanted_obsidian:
+    type: SHAPED
+    result: { item_id: enchanted_obsidian, amount: 1 }
+    shape:
+      - "OOO"
+      - "O O"
+      - "OOO"
+    ingredients:
+      O: { type: MATERIAL, value: OBSIDIAN, amount: 20 } # 160 Obsidian blocks
+
+  personal_compactor_4000:
+    type: SHAPED
+    result: { item_id: personal_compactor_4000 }
+    shape:
+      - "RIR"
+      - "ICI"
+      - "RIR"
+    ingredients:
+      R: { type: ITEM, value: enchanted_redstone, amount: 1 }
+      I: { type: ITEM, value: enchanted_iron_ingot, amount: 1 }
+      C: { type: MATERIAL, value: CHEST, amount: 1 }
+
+  personal_compactor_5000:
+    type: SHAPED
+    result: { item_id: personal_compactor_5000 }
+    shape:
+      - "EGE"
+      - "CPC"
+      - "EGE"
+    ingredients:
+      E: { type: ITEM, value: enchanted_emerald, amount: 1 }
+      G: { type: ITEM, value: enchanted_gold_ingot, amount: 1 }
+      C: { type: ITEM, value: personal_compactor_4000, amount: 1 }
+      P: { type: MATERIAL, value: HOPPER, amount: 1 }
+
+  personal_compactor_6000:
+    type: SHAPED
+    result: { item_id: personal_compactor_6000 }
+    shape:
+      - "DOD"
+      - "HCH"
+      - "DOD"
+    ingredients:
+      D: { type: ITEM, value: enchanted_diamond, amount: 1 }
+      O: { type: ITEM, value: enchanted_obsidian, amount: 1 }
+      H: { type: MATERIAL, value: HOPPER, amount: 1 }
+      C: { type: ITEM, value: personal_compactor_5000, amount: 1 }
+
+  personal_compactor_7000:
+    type: SHAPED
+    result: { item_id: personal_compactor_7000 }
+    shape:
+      - "NSN"
+      - "SCS"
+      - "NSN"
+    ingredients:
+      N: { type: MATERIAL, value: NETHER_STAR, amount: 1}
+      S: { type: ITEM, value: shadow_fragment, amount: 1 }
+      C: { type: ITEM, value: personal_compactor_6000, amount: 1 }
+
+  # --- Ender Armor Recipes ---
+  ender_helmet:
+    type: SHAPED
+    result: { item_id: ender_helmet }
+    shape:
+      - "EDE"
+      - "D D"
+      - "   "
+    ingredients:
+      E: { type: MATERIAL, value: END_STONE, amount: 1 }
+      D: { type: MATERIAL, value: DIAMOND, amount: 1 }
+
+  ender_chestplate:
+    type: SHAPED
+    result: { item_id: ender_chestplate }
+    shape:
+      - "D D"
+      - "EDE"
+      - "DDD"
+    ingredients:
+      E: { type: MATERIAL, value: END_STONE, amount: 1 }
+      D: { type: MATERIAL, value: DIAMOND, amount: 1 }
+
+  ender_leggings:
+    type: SHAPED
+    result: { item_id: ender_leggings }
+    shape:
+      - "DED"
+      - "D D"
+      - "E E"
+    ingredients:
+      E: { type: MATERIAL, value: END_STONE, amount: 1 }
+      D: { type: MATERIAL, value: DIAMOND, amount: 1 }
+
+  ender_boots:
+    type: SHAPED
+    result: { item_id: ender_boots }
+    shape:
+      - "   "
+      - "E E"
+      - "D D"
+    ingredients:
+      E: { type: MATERIAL, value: END_STONE, amount: 1 }
+      D: { type: MATERIAL, value: DIAMOND, amount: 1 }
 

@@ -133,5 +133,49 @@ public class RecipeManager {
     public List<CustomRecipe> getAllRecipes() {
         return Collections.unmodifiableList(customRecipes);
     }
+
+    /**
+     * Finds a CustomRecipe that appears to be a "compacting" recipe for the given input material.
+     * This currently uses a heuristic: a shapeless recipe requiring a large quantity (e.g., 160)
+     * of the specified input material as its sole ingredient type.
+     *
+     * @param inputMaterial The material to find a compacting recipe for.
+     * @return The CustomRecipe if found, otherwise null.
+     */
+    public CustomRecipe findCompactingRecipeForItem(Material inputMaterial) {
+        if (inputMaterial == null) return null;
+        log.finer("[RecipeManager] Attempting to find compacting recipe for input: " + inputMaterial.name());
+
+        for (CustomRecipe recipe : customRecipes) {
+            if (recipe.getType() == CustomRecipe.RecipeType.SHAPELESS) {
+                List<io.github.x1f4r.mmocraft.crafting.models.RequiredItem> ingredients = recipe.getShapelessIngredients();
+                if (ingredients != null && ingredients.size() == 1) {
+                    io.github.x1f4r.mmocraft.crafting.models.RequiredItem requiredItem = ingredients.get(0);
+                    log.finer("[RecipeManager] Checking recipe '" + recipe.getId() + "': Shapeless, 1 ingredient: " + requiredItem);
+                    if (requiredItem.getType() == io.github.x1f4r.mmocraft.crafting.models.RequiredItem.IngredientType.MATERIAL &&
+                        requiredItem.getMaterial() == inputMaterial) {
+                        log.finer("[RecipeManager] Recipe '" + recipe.getId() + "' matches input material " + inputMaterial.name());
+                        if (requiredItem.getAmount() == 160 || requiredItem.getAmount() == 9 || requiredItem.getAmount() == 4) { 
+                            ItemStack resultStack = recipe.getResult();
+                            if (resultStack != null && resultStack.getType() != Material.AIR && resultStack.getType() != inputMaterial) {
+                                log.fine("[RecipeManager] Found suitable compacting recipe '" + recipe.getId() + "' for " + inputMaterial.name() + " -> " + resultStack.getType().name());
+                                return recipe;
+                            } else {
+                                log.finer("[RecipeManager] Recipe '" + recipe.getId() + "' for " + inputMaterial.name() + " discarded: result is null, AIR, or same as input (" + (resultStack != null ? resultStack.getType().name() : "null") + ").");
+                            }
+                        } else {
+                            log.finer("[RecipeManager] Recipe '" + recipe.getId() + "' for " + inputMaterial.name() + " discarded: amount " + requiredItem.getAmount() + " not a typical compacting quantity.");
+                        }
+                    } else {
+                        // log.finer("[RecipeManager] Recipe '" + recipe.getId() + "' discarded: ingredient type or material mismatch."); // Can be verbose
+                    }
+                } else {
+                     // log.finer("[RecipeManager] Recipe '" + recipe.getId() + "' discarded: not shapeless or not 1 ingredient."); // Can be verbose
+                }
+            }
+        }
+        log.fine("[RecipeManager] No suitable compacting recipe found for " + inputMaterial.name());
+        return null;
+    }
 }
 

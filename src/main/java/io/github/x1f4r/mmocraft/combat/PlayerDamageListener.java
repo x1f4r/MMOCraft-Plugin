@@ -19,6 +19,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent; // Import base event
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -96,6 +97,29 @@ public class PlayerDamageListener implements Listener {
             attackerStrength = eStats.getStrength();
             attackerCritChance = eStats.getCritChance();
             attackerCritDamage = eStats.getCritDamage();
+        }
+
+        // --- Shadow Assassin Set Bonus ---
+        if (attacker instanceof Player) {
+            PlayerInventory inv = ((Player) attacker).getInventory();
+            ItemStack[] armor = inv.getArmorContents();
+            int shadowPieces = 0;
+            for (ItemStack armorPiece : armor) {
+                if (armorPiece != null && armorPiece.hasItemMeta()) {
+                    ItemMeta armorMeta = armorPiece.getItemMeta();
+                    if (armorMeta != null && armorMeta.getPersistentDataContainer().has(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING)) {
+                        String customId = armorMeta.getPersistentDataContainer().get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
+                        if (customId != null && customId.startsWith("shadow_assassin_")) {
+                            shadowPieces++;
+                        }
+                    }
+                }
+            }
+            if (shadowPieces > 0) {
+                double shadowBonus = 1.0 + (shadowPieces * 0.10); // +10% per piece
+                calculatedDamage *= shadowBonus;
+                log.finer("Applied Shadow Assassin bonus (" + shadowPieces + " pieces, " + (shadowBonus * 100 - 100) + "%). Damage: " + calculatedDamage);
+            }
         }
 
         // --- Projectile Specific Modifiers ---

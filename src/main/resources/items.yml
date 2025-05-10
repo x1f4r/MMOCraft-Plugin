@@ -128,7 +128,7 @@ items:
       - ""
       - "&6Ability: Dragon's Fury &e&lRIGHT CLICK"
       - "&7Unleash a wave of draconic energy."
-      - "&cNO COOLDOWN" # Cooldowns should be handled by ability system, not just lore
+      - "&9Cooldown: &a0.5s"
       - ""
       - "&cStrength: &f+50"
       - "&cCrit Damage: &f+75%"
@@ -181,10 +181,9 @@ items:
       - "&7Health: &a+20" # This is from vanilla attribute
       - "&7Defense: &a+35" # This is custom stat
       - ""
-      - "&6Full Set Bonus: End Amplification" # Changed to reflect set bonus idea
-      - "&7All stats on this armor piece are"
-      - "&7multiplied by &c2x &7while on"
-      - "&7the End Island!"
+      - "&6Full Set Bonus: End Amplification"
+      - "&7Doubles &aHealth &7and &aDefense"
+      - "&7from this armor piece while in &dThe End&7!"
       - ""
       - "&5&lEPIC HELMET"
     unbreakable: true
@@ -195,7 +194,15 @@ items:
   ender_chestplate:
     material: DIAMOND_CHESTPLATE
     name: "&5Ender Chestplate"
-    lore: ["&7Health: &a+30", "&7Defense: &a+60", "", "&6Full Set Bonus: End Amplification", "", "&5&lEPIC CHESTPLATE"]
+    lore:
+      - "&7Health: &a+30"
+      - "&7Defense: &a+60"
+      - ""
+      - "&6Full Set Bonus: End Amplification"
+      - "&7Doubles &aHealth &7and &aDefense"
+      - "&7from this armor piece while in &dThe End&7!"
+      - ""
+      - "&5&lEPIC CHESTPLATE"
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes: { GENERIC_MAX_HEALTH: 30.0:ADD_NUMBER:CHEST }
@@ -204,7 +211,15 @@ items:
   ender_leggings:
     material: DIAMOND_LEGGINGS
     name: "&5Ender Leggings"
-    lore: ["&7Health: &a+25", "&7Defense: &a+50", "", "&6Full Set Bonus: End Amplification", "", "&5&lEPIC LEGGINGS"]
+    lore:
+      - "&7Health: &a+25"
+      - "&7Defense: &a+50"
+      - ""
+      - "&6Full Set Bonus: End Amplification"
+      - "&7Doubles &aHealth &7and &aDefense"
+      - "&7from this armor piece while in &dThe End&7!"
+      - ""
+      - "&5&lEPIC LEGGINGS"
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes: { GENERIC_MAX_HEALTH: 25.0:ADD_NUMBER:LEGS }
@@ -213,7 +228,15 @@ items:
   ender_boots:
     material: DIAMOND_BOOTS
     name: "&5Ender Boots"
-    lore: ["&7Health: &a+15", "&7Defense: &a+25", "", "&6Full Set Bonus: End Amplification", "", "&5&lEPIC BOOTS"]
+    lore:
+      - "&7Health: &a+15"
+      - "&7Defense: &a+25"
+      - ""
+      - "&6Full Set Bonus: End Amplification"
+      - "&7Doubles &aHealth &7and &aDefense"
+      - "&7from this armor piece while in &dThe End&7!"
+      - ""
+      - "&5&lEPIC BOOTS"
     unbreakable: true
     item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
     attributes: { GENERIC_MAX_HEALTH: 15.0:ADD_NUMBER:FEET }
@@ -257,4 +280,308 @@ items:
     item_flags: [HIDE_ENCHANTS, HIDE_ATTRIBUTES, HIDE_UNBREAKABLE]
     custom_stats:
       FISHING_SPEED: 100
+
+  # --- Hypixel Skyblock Inspired Items ---
+  frozen_scythe:
+    material: IRON_HOE
+    name: "&bFrozen Scythe"
+    lore:
+      - "&7A scythe made of pure ice."
+      - "&7Still very cold to the touch."
+      - ""
+      - "&6Ability: Lesser Ice Bolt &e&lRIGHT CLICK"
+      - "&7Shoots a small Ice Bolt dealing &b500 Ability Damage"
+      - "&7and &9slowing &7enemies for &a3s&7."
+      - "&9Cooldown: &a3s"
+      - ""
+      - "&cDamage: &f+60"
+      - "&bIntelligence: &f+20"
+      - ""
+      - "&bMana Cost: &350"
+      - ""
+      - "&9&lRARE SWORD"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ATTACK_DAMAGE: 6.0:ADD_NUMBER:HAND
+    custom_stats:
+      STRENGTH: 60
+      INTELLIGENCE: 20
+      MANA_COST: 50
+      ABILITY_ID: "lesser_ice_bolt"
+      ABILITY_COOLDOWN_SECONDS: 3
+      ABILITY_DAMAGE: 500
+
+  glacial_scythe:
+    material: IRON_HOE
+    name: "&bGlacial Scythe"
+    lore:
+      - "&7A chilling weapon, pulsing with icy power."
+      - "&7Forged in the coldest depths."
+      - ""
+      - "&6Ability: Ice Bolt &e&lRIGHT CLICK"
+      - "&7Shoots an Ice Bolt dealing &b1500 Ability Damage"
+      - "&7and &9slowing &7enemies for &a5s&7."
+      - "&7Explodes on impact with ground."
+      - "&9Cooldown: &a5s"
+      - ""
+      - "&cDamage: &f+120"
+      - "&bIntelligence: &f+30"
+      - ""
+      - "&bMana Cost: &375"
+      - ""
+      - "&9&lEPIC SWORD"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ATTACK_DAMAGE: 7.0:ADD_NUMBER:HAND
+    custom_stats:
+      STRENGTH: 120
+      INTELLIGENCE: 30
+      MANA_COST: 75
+      ABILITY_ID: "glacial_ice_bolt"
+      ABILITY_COOLDOWN_SECONDS: 5
+      ABILITY_DAMAGE: 1500
+
+  shadow_fragment:
+    material: AMETHYST_SHARD
+    name: "&5Shadow Fragment"
+    lore:
+      - "&7A fragment of solidified shadow,"
+      - "&7pulsing with dark energy."
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  shadow_assassin_helmet:
+    material: NETHERITE_HELMET
+    name: "&5Shadow Assassin Helmet"
+    lore:
+      - "&7Silent as the night, deadly as the dawn."
+      - ""
+      - "&6Set Bonus: Shadow Power"
+      - "&7Each piece increases your final"
+      - "&7damage output by &c10%&7."
+      - ""
+      - "&5&lEPIC HELMET"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 3.0:ADD_NUMBER:HEAD
+      GENERIC_ARMOR_TOUGHNESS: 2.0:ADD_NUMBER:HEAD
+    custom_stats:
+      DEFENSE: 30
+      STRENGTH: 20
+      CRIT_DAMAGE: 15
+      SPEED: 2
+
+  shadow_assassin_chestplate:
+    material: NETHERITE_CHESTPLATE
+    name: "&5Shadow Assassin Chestplate"
+    lore:
+      - "&7Silent as the night, deadly as the dawn."
+      - ""
+      - "&6Set Bonus: Shadow Power"
+      - "&7Each piece increases your final"
+      - "&7damage output by &c10%&7."
+      - ""
+      - "&5&lEPIC CHESTPLATE"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 8.0:ADD_NUMBER:CHEST
+      GENERIC_ARMOR_TOUGHNESS: 2.0:ADD_NUMBER:CHEST
+    custom_stats:
+      DEFENSE: 70
+      STRENGTH: 30
+      CRIT_DAMAGE: 25
+      SPEED: 2
+
+  shadow_assassin_leggings:
+    material: NETHERITE_LEGGINGS
+    name: "&5Shadow Assassin Leggings"
+    lore:
+      - "&7Silent as the night, deadly as the dawn."
+      - ""
+      - "&6Set Bonus: Shadow Power"
+      - "&7Each piece increases your final"
+      - "&7damage output by &c10%&7."
+      - ""
+      - "&5&lEPIC LEGGINGS"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 6.0:ADD_NUMBER:LEGS
+      GENERIC_ARMOR_TOUGHNESS: 2.0:ADD_NUMBER:LEGS
+    custom_stats:
+      DEFENSE: 55
+      STRENGTH: 25
+      CRIT_DAMAGE: 20
+      SPEED: 2
+
+  shadow_assassin_boots:
+    material: NETHERITE_BOOTS
+    name: "&5Shadow Assassin Boots"
+    lore:
+      - "&7Silent as the night, deadly as the dawn."
+      - ""
+      - "&6Set Bonus: Shadow Power"
+      - "&7Each piece increases your final"
+      - "&7damage output by &c10%&7."
+      - ""
+      - "&5&lEPIC BOOTS"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE ]
+    attributes:
+      GENERIC_ARMOR: 3.0:ADD_NUMBER:FEET
+      GENERIC_ARMOR_TOUGHNESS: 2.0:ADD_NUMBER:FEET
+    custom_stats:
+      DEFENSE: 25
+      STRENGTH: 15
+      CRIT_DAMAGE: 10
+      SPEED: 2
+
+  treecapitator:
+    material: GOLDEN_AXE
+    name: "&6Treecapitator"
+    lore:
+      - "&7A legendary axe capable of felling"
+      - "&7entire trees in a single swing."
+      - ""
+      - "&6Ability: Area Chop &e&lPASSIVE"
+      - "&7Instantly breaks connected logs"
+      - "&7of the same type."
+      - "&9Cooldown: &a2s"
+      - ""
+      - "&cDamage: &f+20"
+      - "&eForaging Fortune: &f+30"
+      - ""
+      - "&6&lLEGENDARY AXE"
+    unbreakable: true
+    item_flags: [ HIDE_ATTRIBUTES, HIDE_UNBREAKABLE, HIDE_ENCHANTS ]
+    enchants: { minecraft:efficiency: 5 }
+    attributes:
+      GENERIC_ATTACK_DAMAGE: 8.0:ADD_NUMBER:HAND
+    custom_stats:
+      STRENGTH: 20
+      FORAGING_FORTUNE: 30
+      ABILITY_ID: "area_chop_axe"
+      ABILITY_COOLDOWN_SECONDS: 2
+
+  # --- Enchanted Materials ---
+  enchanted_coal:
+    material: COAL_BLOCK
+    name: "&9Enchanted Coal"
+    lore: ["&7A compressed and highly potent form of coal."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  enchanted_iron_ingot:
+    material: IRON_BLOCK
+    name: "&9Enchanted Iron"
+    lore: ["&7Highly refined and magically infused iron."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  enchanted_gold_ingot:
+    material: GOLD_BLOCK
+    name: "&9Enchanted Gold"
+    lore: ["&7Pure gold, shimmering with arcane energy."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  enchanted_diamond:
+    material: DIAMOND_BLOCK
+    name: "&9Enchanted Diamond"
+    lore: ["&7A flawless diamond, radiating magical power."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  enchanted_emerald:
+    material: EMERALD_BLOCK
+    name: "&9Enchanted Emerald"
+    lore: ["&7A vibrant emerald, crackling with enchantments."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  enchanted_lapis_lazuli:
+    material: LAPIS_BLOCK
+    name: "&9Enchanted Lapis Lazuli"
+    lore: ["&7Lapis Lazuli infused with potent magic."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  enchanted_redstone:
+    material: REDSTONE_BLOCK
+    name: "&9Enchanted Redstone"
+    lore: ["&7Redstone dust, amplified by magical forces."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  enchanted_obsidian:
+    material: OBSIDIAN
+    name: "&9Enchanted Obsidian"
+    lore: ["&7Obsidian that hums with contained energy."]
+    item_flags: [HIDE_ENCHANTS]
+    enchants: {minecraft:unbreaking: 1}
+
+  # --- Utility Items ---
+  personal_compactor_4000:
+    material: DROPPER
+    name: "&aPersonal Compactor 4000"
+    lore:
+      - "&7Automatically crafts ingredients in your"
+      - "&7inventory into their compacted forms."
+      - "&8(Functionality currently for display)"
+      - ""
+      - "&eRight-click to configure!"
+      - "&7Slots: &a1"
+      - ""
+      - "&a&lCOMMON ACCESSORY"
+    item_flags: [HIDE_ATTRIBUTES]
+    custom_stats: { UTILITY_ID: "personal_compactor_4000" }
+
+  personal_compactor_5000:
+    material: DROPPER
+    name: "&9Personal Compactor 5000"
+    lore:
+      - "&7Automatically crafts ingredients in your"
+      - "&7inventory into their compacted forms."
+      - "&8(Functionality currently for display)"
+      - ""
+      - "&eRight-click to configure!"
+      - "&7Slots: &a3"
+      - ""
+      - "&9&lRARE ACCESSORY"
+    item_flags: [HIDE_ATTRIBUTES]
+    custom_stats: { UTILITY_ID: "personal_compactor_5000" }
+
+  personal_compactor_6000:
+    material: DROPPER
+    name: "&5Personal Compactor 6000"
+    lore:
+      - "&7Automatically crafts ingredients in your"
+      - "&7inventory into their compacted forms."
+      - "&8(Functionality currently for display)"
+      - ""
+      - "&eRight-click to configure!"
+      - "&7Slots: &a5"
+      - ""
+      - "&5&lEPIC ACCESSORY"
+    item_flags: [HIDE_ATTRIBUTES]
+    custom_stats: { UTILITY_ID: "personal_compactor_6000" }
+
+  personal_compactor_7000:
+    material: DROPPER
+    name: "&6Personal Compactor 7000"
+    lore:
+      - "&7Automatically crafts ingredients in your"
+      - "&7inventory into their compacted forms."
+      - "&8(Functionality currently for display)"
+      - ""
+      - "&eRight-click to configure!"
+      - "&7Slots: &a7"
+      - ""
+      - "&6&lLEGENDARY ACCESSORY"
+    item_flags: [HIDE_ATTRIBUTES]
+    custom_stats: { UTILITY_ID: "personal_compactor_7000" }
 

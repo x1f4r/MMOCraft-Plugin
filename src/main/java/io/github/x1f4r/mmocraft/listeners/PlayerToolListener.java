@@ -4,12 +4,16 @@ import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.MMOPlugin;
 import io.github.x1f4r.mmocraft.player.PlayerStatsManager;
 import io.github.x1f4r.mmocraft.stats.PlayerStats; // Correct import
-import org.bukkit.Bukkit;
+import io.github.x1f4r.mmocraft.utils.NBTKeys;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.Location;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.FishHook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,14 +28,14 @@ import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import io.github.x1f4r.mmocraft.utils.NBTKeys;
-import org.bukkit.persistence.PersistentDataType;
 
 public class PlayerToolListener implements Listener {
 
@@ -45,6 +49,11 @@ public class PlayerToolListener implements Listener {
     private final Map<UUID, Float> playerBlockProgress = new ConcurrentHashMap<>();
     // Map to store active mining tasks for players
     private final Map<UUID, BukkitTask> activeMiningTasks = new ConcurrentHashMap<>();
+
+    // Cooldown map for Treecapitator ability (Player UUID -> Timestamp)
+    private final Map<UUID, Long> treecapitatorCooldowns = new HashMap<>();
+    private static final String TREECAPITATOR_ABILITY_ID = "area_chop_axe";
+    private static final int TREECAPITATOR_MAX_BREAK_COUNT = 100; // Safety limit
 
     // Material sets for tool effectiveness
     private static final Set<Material> MINING_MATERIALS_PICKAXE = new HashSet<>(Arrays.asList(
@@ -321,98 +330,117 @@ public class PlayerToolListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         Block block = event.getBlock();
-        Location blockLocation = block.getLocation();
-        UUID playerUUID = player.getUniqueId();
+        ItemStack tool = player.getInventory().getItemInMainHand();
 
-        Location targetedLocByOurSystem = playerTargetBlock.get(playerUUID);
-        BukkitTask miningTask = activeMiningTasks.get(playerUUID);
+        // If the block break was due to our custom mining task, it's already handled.
+        // This check prevents recursive calls or double processing if our task broke the block.
+        if (isAnyTaskTargeting(block.getLocation())) {
+            // Our task is handling it, or just handled it.
+            // log.log(Level.FINEST, "[PTL BreakEvt] Block break at " + block.getLocation() + " was handled by MiningTask. Skipping.");
+            // return; //  Letting it proceed to check for Treecapitator for now.
+        }
 
-        // If this BlockBreakEvent is for the block our system was actively managing for this player via a MiningTask
-        if (miningTask != null && targetedLocByOurSystem != null && targetedLocByOurSystem.equals(blockLocation)) {
-            // Our MiningTask called block.breakNaturally(), which triggered this event.
-            // We should let it proceed. The MiningTask's cleanup will handle our internal state.
-            log.log(Level.FINEST, "[PTL BBEvent] BlockBreakEvent for " + player.getName() + " on task-managed block " + blockLocation + ". Task will clean up.");
-        } else {
-            // Block broke due to other means (vanilla, explosion, creative, other plugin)
-            // OR it's a block our system was targeting but the MiningTask finished/was cancelled before this event.
-            // We need to ensure any lingering animation or state for THIS BLOCK is cleared for ALL players.
-
-            // 1. Clear animation for this specific block for all nearby players if one was active
-            // 2. If any player was targeting this block (even if not the event's player), clear their specific mining state.
-            // This covers cases where player A was mining, then player B (creative) insta-breaks it.
-            for (Map.Entry<UUID, Location> entry : new HashMap<>(playerTargetBlock).entrySet()) { // Iterate copy
-                if (entry.getValue().equals(blockLocation)) {
-                    Player otherPlayer = Bukkit.getPlayer(entry.getKey());
-                    if (otherPlayer != null) {
-                         // false for sendClearAnimation (already done by sendBreakPacketToNearby)
-                         // true for forceCancelTask if their task was for THIS block.
-                        clearMiningState(otherPlayer, blockLocation, false, true);
-                        log.log(Level.FINEST, "[PTL BBEvent] External break of " + blockLocation + ". Cleared state for player " + otherPlayer.getName());
-                    } else {
-                        // Player offline, just remove their entries
-                        playerTargetBlock.remove(entry.getKey());
-                        playerBlockProgress.remove(entry.getKey());
-                        BukkitTask task = activeMiningTasks.remove(entry.getKey());
-                        if (task != null) task.cancel();
+        if (tool != null && tool.hasItemMeta()) {
+            ItemMeta meta = tool.getItemMeta();
+            if (meta != null) {
+                PersistentDataContainer pdc = meta.getPersistentDataContainer();
+                if (pdc.has(NBTKeys.ABILITY_ID_KEY, PersistentDataType.STRING)) {
+                    String abilityId = pdc.get(NBTKeys.ABILITY_ID_KEY, PersistentDataType.STRING);
+                    if (TREECAPITATOR_ABILITY_ID.equalsIgnoreCase(abilityId)) {
+                        handleTreecapitator(player, block, tool, pdc);
+                        // Note: Treecapitator effect happens *after* the initial block is broken by player/event.
                     }
                 }
             }
         }
+
+        // The rest of this method is for vanilla breaks or breaks by other plugins,
+        // to ensure our mining state is cleared if the block is broken externally.
+        clearMiningState(player, block.getLocation(), false, true);
+        log.log(Level.FINEST, "[PTL BreakEvt] Block " + block.getType() + " at " + block.getLocation() + " broken by " + player.getName() + ". Cleared any mining state.");
     }
 
-    private void clearMiningState(Player player, Location blockLocToClear, boolean sendClearAnimationPacket, boolean forceCancelTask) {
-        if (player == null || blockLocToClear == null) return;
-        UUID playerUUID = player.getUniqueId();
+    private void handleTreecapitator(Player player, Block startBlock, ItemStack axe, PersistentDataContainer axePdc) {
+        if (!Tag.LOGS.isTagged(startBlock.getType())) {
+            return; // Not a log
+        }
 
-        // Cancel and remove active mining task for this player IF:
-        // a) forceCancelTask is true OR
-        // b) The task is for the specific blockLocToClear
-        BukkitTask task = activeMiningTasks.get(playerUUID);
-        if (task != null) {
-            boolean taskWasForThisBlock = false;
-            // A bit of a hack to check if the task was for this block without direct access to MiningTask fields here.
-            // We rely on playerTargetBlock still pointing to blockLocToClear if the task was indeed for it.
-            Location currentTargetForPlayer = playerTargetBlock.get(playerUUID);
-            if (currentTargetForPlayer != null && currentTargetForPlayer.equals(blockLocToClear)) {
-                taskWasForThisBlock = true;
-            }
+        UUID playerId = player.getUniqueId();
+        long cooldownSeconds = axePdc.getOrDefault(NBTKeys.ABILITY_COOLDOWN_KEY, PersistentDataType.INTEGER, 2); // Default 2s if not set
+        long cooldownMillis = cooldownSeconds * 1000L;
 
-            if (forceCancelTask || taskWasForThisBlock) {
-                task.cancel();
-                activeMiningTasks.remove(playerUUID);
-                log.log(Level.FINEST, "[PTL Clear] Cancelled mining task for player " + player.getName() + " (force=" + forceCancelTask + ", wasForThisBlock=" + taskWasForThisBlock + ")");
+        if (treecapitatorCooldowns.containsKey(playerId)) {
+            long lastUsed = treecapitatorCooldowns.get(playerId);
+            if (System.currentTimeMillis() - lastUsed < cooldownMillis) {
+                return;
             }
         }
 
-        // If the block being cleared is the one currently targeted by THIS player in playerTargetBlock
-        Location currentEffectivelyTargetedBlock = playerTargetBlock.get(playerUUID);
-        if (blockLocToClear.equals(currentEffectivelyTargetedBlock)) {
-            playerTargetBlock.remove(playerUUID);
-            playerBlockProgress.remove(playerUUID);
-            log.log(Level.FINEST, "[PTL Clear] Cleared target & progress for player " + player.getName() + " on block " + blockLocToClear);
-            
-            // Only send clear animation if specifically requested AND this player was targeting it
-            if (sendClearAnimationPacket) {
-                // Block break animation skipped without ProtocolLib
+        Material logType = startBlock.getType();
+        Set<Block> toBreak = new HashSet<>();
+        Queue<Block> toCheck = new LinkedList<>();
+
+        toCheck.add(startBlock); // The initial block is already broken by the event, but add to check its neighbors
+        Set<Block> visited = new HashSet<>(); // Prevent infinite loops with weird tree structures
+        visited.add(startBlock);
+
+        int brokenCount = 0;
+
+        while (!toCheck.isEmpty() && brokenCount < TREECAPITATOR_MAX_BREAK_COUNT) {
+            Block current = toCheck.poll();
+
+            // Check if it's a log of the same type (it should be, if added correctly)
+            if (Tag.LOGS.isTagged(current.getType()) && current.getType() == logType) {
+                // Only add to `toBreak` if it's not the startBlock (which is already being broken by the event)
+                if (!current.equals(startBlock)) {
+                    toBreak.add(current);
+                    brokenCount++;
+                }
+
+                // Add neighbors to check
+                for (BlockFace face : BlockFace.values()) { // Check all 26 directions (incl. diagonals)
+                    if (face == BlockFace.SELF) continue;
+                    Block neighbor = current.getRelative(face);
+                    if (neighbor.getType() == logType && !visited.contains(neighbor)) {
+                        visited.add(neighbor);
+                        toCheck.add(neighbor);
+                    }
+                }
             }
         }
-        
-        // If no other player is targeting this block (via playerTargetBlock or activeMiningTasks),
-        // remove its general animation ID from activeBlockAnimations.
-        boolean stillReferenced = false;
-        for (Location loc : playerTargetBlock.values()) {
-            if (loc.equals(blockLocToClear)) {
-                stillReferenced = true;
-                break;
+
+        if (!toBreak.isEmpty()) {
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 0.8f);
+            // Break the additional blocks
+            for (Block logBlock : toBreak) {
+                if (logBlock.equals(startBlock)) continue; // Should not happen due to earlier check, but safety
+
+                // Simulate player breaking for drops and events, but bypass protection plugins if needed (tricky)
+                // For simplicity, just break the block and let default drops happen.
+                // Check if game mode allows breaking, though Treecapitator implies ability to break.
+                if (player.getGameMode() != GameMode.CREATIVE) {
+                    logBlock.breakNaturally(axe); // Uses the axe for drops, respects enchantments like Silk Touch/Fortune
+                } else {
+                    logBlock.setType(Material.AIR); // Creative just removes it
+                }
+                logBlock.getWorld().spawnParticle(org.bukkit.Particle.BLOCK_DUST, logBlock.getLocation().add(0.5, 0.5, 0.5), 10, 0.5, 0.5, 0.5, logBlock.getType().createBlockData());
             }
-        }
-        // Check activeMiningTasks as well (though ideally playerTargetBlock should be source of truth)
-        if (!stillReferenced && !isAnyTaskTargeting(blockLocToClear)) {
-            // activeBlockAnimations.remove(blockLocToClear);
-             log.log(Level.FINEST, "[PTL Clear] Removed general animation ID for " + blockLocToClear);
+            // Apply durability damage for the extra blocks broken if the axe is damageable
+            if (axe.getItemMeta() instanceof Damageable && !axe.getItemMeta().isUnbreakable()) {
+                Damageable damageable = (Damageable) axe.getItemMeta();
+                int damageToApply = toBreak.size(); // Simple: 1 durability per extra block
+                damageable.setDamage(damageable.getDamage() + damageToApply);
+                axe.setItemMeta(damageable);
+                if (damageable.getDamage() >= axe.getType().getMaxDurability()) {
+                    player.getInventory().setItemInMainHand(null); // Or the slot it was in
+                    player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
+                }
+            }
+            treecapitatorCooldowns.put(playerId, System.currentTimeMillis());
+            player.sendMessage(Component.text("Treecapitator felled " + (toBreak.size() +1)  + " logs!", NamedTextColor.GREEN));
         }
     }
-    
+
     private boolean isAnyTaskTargeting(Location location) {
         for (UUID playerId : activeMiningTasks.keySet()) {
             Location target = playerTargetBlock.get(playerId); // Check against the main target map
@@ -422,7 +450,6 @@ public class PlayerToolListener implements Listener {
         }
         return false;
     }
-
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
@@ -520,6 +547,52 @@ public class PlayerToolListener implements Listener {
                     log.log(Level.SEVERE, "[PTL Fish] Error applying fishing speed for " + player.getName(), e);
                 }
             }
+        }
+    }
+
+    private void clearMiningState(Player player, Location blockLocToClear, boolean sendClearAnimationPacket, boolean forceCancelTask) {
+        if (player == null || blockLocToClear == null) return;
+        UUID playerUUID = player.getUniqueId();
+
+        BukkitTask task = activeMiningTasks.get(playerUUID);
+        if (task != null) {
+            boolean taskWasForThisBlock = false;
+            Location currentTargetForPlayer = playerTargetBlock.get(playerUUID);
+            if (currentTargetForPlayer != null && currentTargetForPlayer.equals(blockLocToClear)) {
+                taskWasForThisBlock = true;
+            }
+
+            if (forceCancelTask || taskWasForThisBlock) {
+                task.cancel();
+                activeMiningTasks.remove(playerUUID);
+                log.log(Level.FINEST, "[PTL Clear] Cancelled mining task for player " + player.getName() + " (force=" + forceCancelTask + ", wasForThisBlock=" + taskWasForThisBlock + ")");
+            }
+        }
+
+        Location currentEffectivelyTargetedBlock = playerTargetBlock.get(playerUUID);
+        if (blockLocToClear.equals(currentEffectivelyTargetedBlock)) {
+            playerTargetBlock.remove(playerUUID);
+            playerBlockProgress.remove(playerUUID);
+            log.log(Level.FINEST, "[PTL Clear] Cleared target & progress for player " + player.getName() + " on block " + blockLocToClear);
+            
+            if (sendClearAnimationPacket) {
+                // Placeholder: send packet to clear block break animation if using ProtocolLib
+                // player.sendBlockDamage(blockLocToClear, 0, -1); // Example, may need specific entity ID
+            }
+        }
+        
+        // If no other player is targeting this block, remove its general animation ID.
+        // This logic might need adjustment if activeBlockAnimations map is used elsewhere.
+        boolean stillReferenced = false;
+        for (Location loc : playerTargetBlock.values()) {
+            if (loc.equals(blockLocToClear)) {
+                stillReferenced = true;
+                break;
+            }
+        }
+        if (!stillReferenced && !isAnyTaskTargeting(blockLocToClear)) {
+            // e.g., activeBlockAnimations.remove(blockLocToClear);
+            log.log(Level.FINEST, "[PTL Clear] Potentially removed general animation for " + blockLocToClear + " (if map was used)");
         }
     }
 }

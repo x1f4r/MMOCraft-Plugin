@@ -183,7 +183,37 @@ public class ItemManager {
             if (customStatsSection.contains("TREE_BOW_MAGICAL_AMMO")) pdc.set(NBTKeys.TREE_BOW_MAGICAL_AMMO_KEY, PersistentDataType.BYTE, (byte)customStatsSection.getInt("TREE_BOW_MAGICAL_AMMO"));
             if (customStatsSection.contains("INSTANT_SHOOT_BOW")) pdc.set(NBTKeys.INSTANT_SHOOT_BOW_TAG, PersistentDataType.BYTE, (byte)customStatsSection.getInt("INSTANT_SHOOT_BOW"));
             if (customStatsSection.contains("ABILITY_ID")) pdc.set(NBTKeys.ABILITY_ID_KEY, PersistentDataType.STRING, customStatsSection.getString("ABILITY_ID"));
+            if (customStatsSection.contains("ABILITY_COOLDOWN_SECONDS")) pdc.set(NBTKeys.ABILITY_COOLDOWN_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("ABILITY_COOLDOWN_SECONDS"));
+            if (customStatsSection.contains("ABILITY_DAMAGE")) pdc.set(NBTKeys.ABILITY_DAMAGE_KEY, PersistentDataType.INTEGER, customStatsSection.getInt("ABILITY_DAMAGE"));
+            if (customStatsSection.contains("UTILITY_ID")) pdc.set(NBTKeys.UTILITY_ID_KEY, PersistentDataType.STRING, customStatsSection.getString("UTILITY_ID"));
         }
+
+        // After all other parsing, if it's a compactor, try to parse slot count from lore
+        if (itemId.startsWith("personal_compactor_")) {
+            final String SLOTS_LORE_PREFIX_UNCOLORED = "Slots: "; // The part after color codes
+            int compactorSlots = 1; // Default to 1 slot if not found or parse error
+            if (meta.hasLore() && meta.lore() != null) {
+                for (Component loreComponent : meta.lore()) {
+                    if (loreComponent == null) continue;
+                    // Strip color codes to reliably find the prefix
+                    String uncoloredLoreLine = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(loreComponent);
+                    if (uncoloredLoreLine.startsWith(SLOTS_LORE_PREFIX_UNCOLORED)) {
+                        try {
+                            String numberPart = uncoloredLoreLine.substring(SLOTS_LORE_PREFIX_UNCOLORED.length()).trim();
+                            compactorSlots = Integer.parseInt(numberPart);
+                            if (compactorSlots <= 0) compactorSlots = 1; // Ensure at least 1
+                            // log.finer("Parsed " + compactorSlots + " slots for compactor " + itemId + " from lore: '" + plainLoreLine + "'");
+                            break; 
+                        } catch (NumberFormatException e) {
+                            log.warning("Could not parse slot count for compactor " + itemId + " from lore line: '" + uncoloredLoreLine + "'. Defaulting to 1 slot.");
+                        }
+                    }
+                }
+            }
+            meta.getPersistentDataContainer().set(NBTKeys.COMPACTOR_SLOT_COUNT_KEY, PersistentDataType.INTEGER, compactorSlots);
+            // log.info("Set " + compactorSlots + " NBT slots for " + itemId);
+        }
+
         item.setItemMeta(meta);
         return item;
     }

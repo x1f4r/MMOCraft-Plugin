@@ -75,7 +75,7 @@ public class RequiredItem {
                      return null;
                 }
                 break;
-            case CUSTOM_ITEM:
+            case ITEM:
                 // valueStr should be the custom item ID (e.g., "aspect_of_the_end")
                 customItemId = valueStr.toLowerCase();
                 // Validation that this item ID exists could happen here or in RecipeManager/ItemManager if needed
@@ -100,7 +100,7 @@ public class RequiredItem {
             case TAG:
                 typeMatch = (this.tag != null && this.tag.isTagged(item.getType()));
                 break;
-            case CUSTOM_ITEM:
+            case ITEM:
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && NBTKeys.ITEM_ID_KEY != null) {
                     String itemIdVal = meta.getPersistentDataContainer().get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
@@ -138,7 +138,7 @@ public class RequiredItem {
                 return (item.getType() == this.material);
             case TAG:
                 return (this.tag != null && this.tag.isTagged(item.getType()));
-            case CUSTOM_ITEM:
+            case ITEM:
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && NBTKeys.ITEM_ID_KEY != null) {
                     String itemIdVal = meta.getPersistentDataContainer().get(NBTKeys.ITEM_ID_KEY, PersistentDataType.STRING);
@@ -157,7 +157,7 @@ public class RequiredItem {
     public Tag<Material> getTag() { return tag; }       // Can be null
     public String getCustomItemId() { return customItemId; } // Can be null
 
-    public enum IngredientType { MATERIAL, TAG, CUSTOM_ITEM }
+    public enum IngredientType { MATERIAL, TAG, ITEM }
 
     @Override
     public String toString() { // For logging
@@ -165,7 +165,7 @@ public class RequiredItem {
         switch (type) {
             case MATERIAL: valueDetail = material.name(); break;
             case TAG: valueDetail = "#" + (tag != null ? tag.getKey().getKey() : "UNKNOWN_TAG"); break;
-            case CUSTOM_ITEM: valueDetail = "ITEM:" + customItemId; break;
+            case ITEM: valueDetail = "ITEM:" + customItemId; break;
         }
         return "RequiredItem{type=" + type + ", value=" + valueDetail + ", amount=" + amount + '}';
     }

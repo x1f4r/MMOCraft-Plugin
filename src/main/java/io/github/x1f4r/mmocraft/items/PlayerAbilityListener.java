@@ -11,20 +11,26 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -37,6 +43,7 @@ public class PlayerAbilityListener implements Listener {
 
     private final PlayerStatsManager statsManager;
     private final Logger log;
+    private final MMOPlugin plugin; // Added for scheduler tasks
 
     // Cooldown map for abilities (Ability ID -> Player UUID -> Timestamp)
     private final Map<String, Map<UUID, Long>> abilityCooldowns = new HashMap<>();
@@ -49,10 +56,15 @@ public class PlayerAbilityListener implements Listener {
     private final double AOTD_STRENGTH_SCALING = 0.5;
     private final double AOTD_RANGE = 5.0;
 
+    private static final String ICE_BOLT_METADATA = "mmocraft_ice_bolt_dmg";
+    private static final String ICE_BOLT_SLOW_DURATION = "mmocraft_ice_bolt_slow_dur";
+    private static final String ICE_BOLT_SLOW_AMPLIFIER = "mmocraft_ice_bolt_slow_amp";
+
 
     public PlayerAbilityListener(MMOCore core) {
         this.statsManager = core.getPlayerStatsManager();
         this.log = MMOPlugin.getMMOLogger();
+        this.plugin = core.getPlugin(); // Initialize plugin
     }
 
     @EventHandler
@@ -97,10 +109,19 @@ public class PlayerAbilityListener implements Listener {
         // --- START Cooldown Change ---
         // Check cooldowns *UNLESS* it's the instant_transmission ability
         if (!"instant_transmission".equalsIgnoreCase(abilityId)) {
-            long cooldownMillis = getAbilityCooldown(abilityId);
+            long cooldownMillis;
+            if (pdc.has(NBTKeys.ABILITY_COOLDOWN_KEY, PersistentDataType.INTEGER)) {
+                cooldownMillis = pdc.get(NBTKeys.ABILITY_COOLDOWN_KEY, PersistentDataType.INTEGER) * 1000L;
+                log.finer("[AbilityListener] Using NBT cooldown for " + abilityId + ": " + cooldownMillis + "ms");
+            } else {
+                cooldownMillis = getAbilityCooldown(abilityId); // Fallback to hardcoded/default
+                log.finer("[AbilityListener] Using default cooldown for " + abilityId + ": " + cooldownMillis + "ms (NBT not found)");
+            }
+
             if (isOnCooldown(abilityId, player.getUniqueId(), cooldownMillis)) {
                 // Optional: Send cooldown message
-                // player.sendMessage(ChatColor.RED + "Ability is on cooldown!");
+                long remainingCooldown = getRemainingCooldown(abilityId, player.getUniqueId(), cooldownMillis);
+                player.sendMessage(Component.text("Ability on cooldown! (" + String.format("%.1f", remainingCooldown / 1000.0) + "s)", NamedTextColor.RED));
                 return;
             }
         }
@@ -124,6 +145,10 @@ public class PlayerAbilityListener implements Listener {
             case "instant_transmission":
                 success = executeInstantTransmission(player);
                 break;
+            case "lesser_ice_bolt":
+            case "glacial_ice_bolt":
+                success = executeIceBolt(player, pdc, abilityId.toLowerCase());
+                break;
             // Add cases for other ability IDs here
             // case "some_other_ability":
             //     success = executeSomeOtherAbility(player, stats, pdc);
@@ -140,7 +165,14 @@ public class PlayerAbilityListener implements Listener {
             // --- START Cooldown Change ---
             // Set cooldown *UNLESS* it's the instant_transmission ability
             if (!"instant_transmission".equalsIgnoreCase(abilityId)) {
-                setCooldown(abilityId, player.getUniqueId());
+                // Determine cooldown duration again (could be from NBT or default)
+                long currentCooldownDurationMillis;
+                 if (pdc.has(NBTKeys.ABILITY_COOLDOWN_KEY, PersistentDataType.INTEGER)) {
+                    currentCooldownDurationMillis = pdc.get(NBTKeys.ABILITY_COOLDOWN_KEY, PersistentDataType.INTEGER) * 1000L;
+                } else {
+                    currentCooldownDurationMillis = getAbilityCooldown(abilityId);
+                }
+                setCooldown(abilityId, player.getUniqueId(), currentCooldownDurationMillis);
             }
             // --- END Cooldown Change ---
             player.setFallDistance(0.0f); // Prevent fall damage after ability use
@@ -175,45 +207,54 @@ public class PlayerAbilityListener implements Listener {
         Location eyeLoc = player.getEyeLocation();
         Vector direction = eyeLoc.getDirection().normalize();
         Location targetLoc = null;
+        final int MAX_ITERATIONS_FOR_SAFE_SPOT = 5; // How many times to try stepping back
+
+        log.finer("[AOTE] Player " + player.getName() + " using Instant Transmission from " + formatLocation(originalLoc));
 
         // Ray trace to find the target block or max distance
         RayTraceResult rayTrace = player.getWorld().rayTraceBlocks(eyeLoc, direction, AOTE_TELEPORT_RANGE, FluidCollisionMode.NEVER, true);
 
+        Location initialTargetPoint;
+
         if (rayTrace != null && rayTrace.getHitBlock() != null) {
-            // Hit a block, find safe spot adjacent to hit face
-            Block hitBlock = rayTrace.getHitBlock();
-            BlockFace hitFace = rayTrace.getHitBlockFace();
-
-            if (hitFace != null) {
-                Location adjacentBlockLoc = hitBlock.getRelative(hitFace).getLocation();
-                // Check if the space above the adjacent block is safe
-                Location headLoc = adjacentBlockLoc.clone().add(0.5, 1.0, 0.5);
-                Location feetLoc = adjacentBlockLoc.clone().add(0.5, 0.0, 0.5);
-
-                if (isSafeLocation(feetLoc) && isSafeLocation(headLoc)) {
-                    targetLoc = feetLoc;
-                }
-            }
-            // Fallback if adjacent isn't safe or no hit face: try position before the block
-            if (targetLoc == null) {
-                targetLoc = rayTrace.getHitPosition().toLocation(player.getWorld()).subtract(direction.multiply(0.1)); // Move slightly back
-                // Check safety of fallback location
-                if (!isSafeLocation(targetLoc) || !isSafeLocation(targetLoc.clone().add(0,1,0))) {
-                    targetLoc = null; // Fallback is also unsafe
-                }
-            }
-
+            initialTargetPoint = rayTrace.getHitPosition().toLocation(player.getWorld());
+            log.finer("[AOTE] Raytrace hit block: " + rayTrace.getHitBlock().getType() + " at " + formatLocation(initialTargetPoint));
+            // Start search from slightly before the hit block
+            initialTargetPoint.subtract(direction.multiply(0.2)); // a bit further back than before
         } else {
-            // No block hit, teleport max distance
-            Location maxDistLoc = originalLoc.clone().add(direction.multiply(AOTE_TELEPORT_RANGE));
-            // Check safety of max distance location
-            if (isSafeLocation(maxDistLoc) && isSafeLocation(maxDistLoc.clone().add(0,1,0))) {
-                targetLoc = maxDistLoc;
-            } else {
-                // Try finding the last safe block along the path (more complex)
-                // For simplicity, we might just disallow teleport if max distance is unsafe
-                targetLoc = null;
+            // No block hit, target max distance
+            initialTargetPoint = originalLoc.clone().add(direction.multiply(AOTE_TELEPORT_RANGE));
+            log.finer("[AOTE] Raytrace hit nothing, initial target is max range: " + formatLocation(initialTargetPoint));
+        }
+
+        // Iterate backwards from the initial target point to find a safe spot
+        for (int i = 0; i < MAX_ITERATIONS_FOR_SAFE_SPOT; i++) {
+            Location checkLocFeet = initialTargetPoint.clone(); // Base for feet
+            Location checkLocHead = initialTargetPoint.clone().add(0, 1, 0); // Head position
+
+            // Ensure the player doesn't teleport below the world or too high (e.g. build limit)
+            if (checkLocFeet.getY() < player.getWorld().getMinHeight() || checkLocFeet.getY() > player.getWorld().getMaxHeight() -2) { // -2 to ensure space for head
+                log.finer("[AOTE] Attempt " + i + ": Unsafe Y level at " + formatLocation(checkLocFeet) + ". Stepping back.");
+                initialTargetPoint.subtract(direction.multiply(0.5)); // Step back further
+                continue;
             }
+
+            if (isSafeLocation(checkLocFeet) && isSafeLocation(checkLocHead)) {
+                 // Check block below feet is solid
+                Block blockBelow = checkLocFeet.clone().subtract(0, 1, 0).getBlock();
+                if(!blockBelow.getType().isSolid() && blockBelow.getType() != Material.WATER) { // Allow teleporting onto water surface
+                    log.finer("[AOTE] Attempt " + i + ": Unsafe, block below is not solid (" + blockBelow.getType() + ") at " + formatLocation(checkLocFeet) + ". Stepping back.");
+                    initialTargetPoint.subtract(direction.multiply(0.5)); // Step back
+                    continue;
+                }
+                targetLoc = checkLocFeet; // Found a safe spot!
+                log.fine("[AOTE] Found safe teleport location after " + i + " iterations: " + formatLocation(targetLoc));
+                break;
+            } else {
+                log.finer("[AOTE] Attempt " + i + ": Unsafe at " + formatLocation(checkLocFeet) + " (Feet: " + checkLocFeet.getBlock().getType() + ", Head: " + checkLocHead.getBlock().getType() + "). Stepping back.");
+            }
+            // If not safe, step back along the direction vector
+            initialTargetPoint.subtract(direction.multiply(0.5)); // Step back by 0.5 blocks
         }
 
 
@@ -222,14 +263,21 @@ public class PlayerAbilityListener implements Listener {
             targetLoc.setPitch(originalLoc.getPitch());
             targetLoc.setYaw(originalLoc.getYaw());
 
+            // Center the player in the block
+            targetLoc.setX(targetLoc.getBlockX() + 0.5);
+            targetLoc.setZ(targetLoc.getBlockZ() + 0.5);
+            // Y should remain as found by isSafeLocation
+
             player.teleport(targetLoc);
             player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f);
             player.getWorld().spawnParticle(Particle.PORTAL, eyeLoc, 30, 0.3, 0.5, 0.3, 0.2);
             player.getWorld().spawnParticle(Particle.PORTAL, player.getEyeLocation(), 30, 0.3, 0.5, 0.3, 0.2);
+            log.fine("[AOTE] Teleported " + player.getName() + " to " + formatLocation(targetLoc));
             return true; // Teleport successful
         } else {
-            player.sendMessage(Component.text("Cannot teleport, destination blocked!", NamedTextColor.RED));
+            player.sendMessage(Component.text("Cannot teleport, destination blocked or unsafe!", NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0f, 1.0f);
+            log.warning("[AOTE] Failed to find a safe teleport location for " + player.getName() + " after " + MAX_ITERATIONS_FOR_SAFE_SPOT + " iterations.");
             return false; // Teleport failed
         }
     }
@@ -240,9 +288,15 @@ public class PlayerAbilityListener implements Listener {
         Block feetBlock = loc.getBlock();
         Block headBlock = loc.clone().add(0, 1, 0).getBlock();
         // Check if both feet and head space are passable (air, grass, water, etc.)
-        return feetBlock.isPassable() && !feetBlock.isLiquid() && headBlock.isPassable() && !headBlock.isLiquid();
+        // Allow teleporting into water
+        return feetBlock.isPassable() && headBlock.isPassable();
     }
 
+    // Helper method to format location for logging
+    private String formatLocation(Location loc) {
+        if (loc == null) return "null";
+        return String.format("%.2f, %.2f, %.2f in %s", loc.getX(), loc.getY(), loc.getZ(), loc.getWorld() != null ? loc.getWorld().getName() : "null_world");
+    }
 
     // --- Instant Bow Shot Logic ---
     private void handleInstantBowShot(Player player, ItemStack bow, PersistentDataContainer bowPDC) {
@@ -335,10 +389,102 @@ public class PlayerAbilityListener implements Listener {
         return (System.currentTimeMillis() - lastUsed) < cooldownMillis;
     }
 
-    private void setCooldown(String abilityId, UUID playerId) {
-        // Only set cooldown if the ability is supposed to have one (check getAbilityCooldown)
-        if (getAbilityCooldown(abilityId) > 0) {
+    private long getRemainingCooldown(String abilityId, UUID playerId, long cooldownMillis) {
+        if (cooldownMillis <= 0) return 0L;
+        Map<UUID, Long> playerCooldowns = abilityCooldowns.get(abilityId);
+        if (playerCooldowns == null) return 0L;
+        long lastUsed = playerCooldowns.getOrDefault(playerId, 0L);
+        if (lastUsed == 0L) return 0L;
+        long timePassed = System.currentTimeMillis() - lastUsed;
+        return Math.max(0L, cooldownMillis - timePassed);
+    }
+
+    private void setCooldown(String abilityId, UUID playerId, long currentCooldownDurationMillis) {
+        // Only set cooldown if the ability is supposed to have one (duration > 0)
+        if (currentCooldownDurationMillis > 0) {
             abilityCooldowns.computeIfAbsent(abilityId, k -> new HashMap<>()).put(playerId, System.currentTimeMillis());
+            log.finer("[AbilityListener] Set cooldown for \"" + abilityId + "\" for player \"" + playerId + "\" to \"" + currentCooldownDurationMillis + "ms\"");
+        } else {
+            log.finer("[AbilityListener] Cooldown for \"" + abilityId + "\" is 0ms or less, not setting timestamp.");
         }
+    }
+
+    private boolean executeIceBolt(Player player, PersistentDataContainer itemPdc, String abilityId) {
+        int abilityDamage = itemPdc.getOrDefault(NBTKeys.ABILITY_DAMAGE_KEY, PersistentDataType.INTEGER, 0);
+        int slowDuration = "glacial_ice_bolt".equals(abilityId) ? 5 * 20 : 3 * 20; // 5s or 3s in ticks
+        int slowAmplifier = "glacial_ice_bolt".equals(abilityId) ? 1 : 0; // Slowness II or I
+
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT_FREEZE, 1.0f, 1.0f);
+        player.getWorld().spawnParticle(Particle.SNOWFLAKE, player.getEyeLocation(), 30, 0.5, 0.5, 0.5, 0.1);
+
+        Snowball iceBolt = player.launchProjectile(Snowball.class);
+        iceBolt.setShooter(player);
+        iceBolt.setGravity(true); // Or false for a more "magical" straight shot initially
+        iceBolt.setVelocity(player.getEyeLocation().getDirection().multiply(1.8)); // Adjust speed
+
+        // Store damage and slow info on the projectile
+        iceBolt.setMetadata(ICE_BOLT_METADATA, new FixedMetadataValue(plugin, abilityDamage));
+        iceBolt.setMetadata(ICE_BOLT_SLOW_DURATION, new FixedMetadataValue(plugin, slowDuration));
+        iceBolt.setMetadata(ICE_BOLT_SLOW_AMPLIFIER, new FixedMetadataValue(plugin, slowAmplifier));
+
+        // Particle trail for the bolt
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!iceBolt.isValid() || iceBolt.isDead() || iceBolt.isOnGround()) {
+                    this.cancel();
+                    return;
+                }
+                iceBolt.getWorld().spawnParticle(Particle.ITEM_CRACK, iceBolt.getLocation(), 5, 0.1, 0.1, 0.1, 0.01, new ItemStack(Material.ICE));
+                iceBolt.getWorld().spawnParticle(Particle.SNOWFLAKE, iceBolt.getLocation(), 2, 0,0,0, 0);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+
+        return true;
+    }
+
+    @EventHandler
+    public void onProjectileHit(ProjectileHitEvent event) {
+        Projectile projectile = event.getEntity();
+        if (!(projectile instanceof Snowball) || !projectile.hasMetadata(ICE_BOLT_METADATA)) {
+            return;
+        }
+
+        Snowball iceBolt = (Snowball) projectile;
+        int damage = iceBolt.getMetadata(ICE_BOLT_METADATA).get(0).asInt();
+        int slowDuration = iceBolt.getMetadata(ICE_BOLT_SLOW_DURATION).get(0).asInt();
+        int slowAmplifier = iceBolt.getMetadata(ICE_BOLT_SLOW_AMPLIFIER).get(0).asInt();
+        boolean isGlacial = slowAmplifier == 1; // Crude check if it was the stronger bolt
+
+        Location hitLocation = iceBolt.getLocation();
+        World world = iceBolt.getWorld();
+
+        world.spawnParticle(Particle.SNOWBALL, hitLocation, 20, 0.5, 0.5, 0.5, 0.1);
+        world.spawnParticle(Particle.BLOCK_CRACK, hitLocation, 30, 0.5, 0.5, 0.5, 0.1, Material.ICE.createBlockData());
+        world.playSound(hitLocation, Sound.BLOCK_GLASS_BREAK, 1.0f, 1.0f);
+
+
+        if (event.getHitEntity() != null && event.getHitEntity() instanceof LivingEntity && event.getHitEntity() != projectile.getShooter()) {
+            LivingEntity target = (LivingEntity) event.getHitEntity();
+            target.damage(damage); // Direct damage, not going through PlayerDamageListener custom calcs for this "ability damage"
+            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, slowDuration, slowAmplifier));
+            world.spawnParticle(Particle.CRIT_MAGIC, target.getEyeLocation(), 15, 0.3, 0.3, 0.3);
+        }
+
+        // Explosion effect on any hit (block or entity) for Glacial Scythe's stronger version
+        if (isGlacial) {
+            world.spawnParticle(Particle.EXPLOSION_LARGE, hitLocation, 1, 0,0,0,0);
+            world.playSound(hitLocation, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.2f);
+            for (org.bukkit.entity.Entity nearbyEntity : world.getNearbyEntities(hitLocation, 3, 3, 3)) {
+                if (nearbyEntity instanceof LivingEntity && nearbyEntity != projectile.getShooter()) {
+                    LivingEntity nearbyTarget = (LivingEntity) nearbyEntity;
+                    if (nearbyTarget != event.getHitEntity()) { // Don't double-damage the direct hit target
+                         nearbyTarget.damage(damage); // Same damage as direct hit for AoE
+                         nearbyTarget.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, slowDuration / 2, slowAmplifier)); // Shorter slow for AoE
+                    }
+                }
+            }
+        }
+        iceBolt.remove(); // Clean up snowball
     }
 }

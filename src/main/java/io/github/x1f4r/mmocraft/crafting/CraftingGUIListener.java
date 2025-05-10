@@ -20,6 +20,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.Recipe;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -218,16 +219,13 @@ public class CraftingGUIListener implements Listener {
         if (customRecipe != null) {
             guiInventory.setItem(RESULT_SLOT, customRecipe.getResult());
         } else {
-            // Check for vanilla recipes ONLY if no custom recipe matches
-            // Note: Bukkit.getServer().getCraftingRecipe() might not work reliably with custom inventories.
-            // A more robust solution might involve checking vanilla recipes directly if needed.
-            // For simplicity, we'll primarily focus on custom recipes here.
-            // Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
-            // if (vanillaRecipe != null) {
-            //     guiInventory.setItem(RESULT_SLOT, vanillaRecipe.getResult());
-            // } else {
-                 guiInventory.setItem(RESULT_SLOT, null); // Clear slot if no custom recipe found
-            // }
+            // Fallback to vanilla recipes when no custom recipe matches
+            Recipe vanillaRecipe = Bukkit.getServer().getCraftingRecipe(currentMatrix, player.getWorld());
+            if (vanillaRecipe != null) {
+                guiInventory.setItem(RESULT_SLOT, vanillaRecipe.getResult());
+            } else {
+                guiInventory.setItem(RESULT_SLOT, null);
+            }
         }
     }
 

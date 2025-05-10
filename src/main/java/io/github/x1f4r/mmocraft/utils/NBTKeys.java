@@ -29,6 +29,11 @@ public final class NBTKeys {
     public static NamespacedKey SHOOTING_SPEED_KEY;
     public static NamespacedKey INSTANT_SHOOT_BOW_TAG;
     public static NamespacedKey ABILITY_ID_KEY;
+    public static NamespacedKey ABILITY_COOLDOWN_KEY;
+    public static NamespacedKey ABILITY_DAMAGE_KEY;
+    public static NamespacedKey UTILITY_ID_KEY;
+    public static NamespacedKey COMPACTOR_FILTER_ITEM_KEY_PREFIX;
+    public static NamespacedKey COMPACTOR_SLOT_COUNT_KEY;
 
     public static void init(MMOPlugin plugin) {
         if (NBTKeys.pluginInstance != null) {
@@ -58,6 +63,12 @@ public final class NBTKeys {
         SHOOTING_SPEED_KEY = createKey("shooting_speed");
         INSTANT_SHOOT_BOW_TAG = createKey("instant_shoot_bow_tag");
         ABILITY_ID_KEY = createKey("ability_id");
+        ABILITY_COOLDOWN_KEY = createKey("ability_cooldown");
+        ABILITY_DAMAGE_KEY = createKey("ability_damage");
+        UTILITY_ID_KEY = createKey("utility_id");
+        // COMPACTOR_FILTER_ITEM_KEY_PREFIX is just a string, not a full NamespacedKey yet.
+        // We'll construct the full key dynamically in CompactorGUIListener like: createKey(COMPACTOR_FILTER_ITEM_KEY_PREFIX_STRING + slotNumber)
+        COMPACTOR_SLOT_COUNT_KEY = createKey("compactor_slot_count");
 
         log.info("NBTKeys initialized.");
     }
@@ -67,6 +78,14 @@ public final class NBTKeys {
             throw new IllegalStateException("NBTKeys.init() must be called before creating keys!");
         }
         return new NamespacedKey(pluginInstance, "mmo_" + keyName);
+    }
+
+    // Helper method to create a NamespacedKey for a compactor filter slot
+    public static NamespacedKey getCompactorFilterKey(int slotNumber) {
+        if (pluginInstance == null) {
+            throw new IllegalStateException("NBTKeys.init() must be called before creating keys!");
+        }
+        return new NamespacedKey(pluginInstance, "mmo_compactor_filter_" + slotNumber);
     }
 
     private NBTKeys() {
