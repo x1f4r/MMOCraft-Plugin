@@ -1,0 +1,62 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1' // For packaging dependencies (if needed later)
+}
+
+group = 'io.github.x1f4r' // Or your group ID
+version = '0.1.0-SNAPSHOT' // Initial version
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21) // Target Java 21
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'purpur'
+        url = 'https://repo.purpurmc.org/snapshots' // Or /releases if you prefer specific releases. Snapshots are common for up-to-date APIs. [1, 2, 7]
+    }
+    // You might add other repositories later if needed (e.g., for specific libraries)
+    // maven { url = 'https://papermc.io/repo/repository/maven-public/' } // Paper, included by Purpur
+    // maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' } // Spigot, included by Paper
+}
+
+dependencies {
+    // Purpur API - this includes Paper, Spigot, and Bukkit APIs [1, 2]
+    compileOnly "org.purpurmc.purpur:purpur-api:1.21.5-R0.1-SNAPSHOT" // Check Purpur's website for the latest 1.21.5 version string [2]
+
+    // Adventure API (included with Paper/Purpur, but good to be aware of)
+    // compileOnly "net.kyori:adventure-api:4.17.0"
+    // compileOnly "net.kyori:adventure-platform-bukkit:4.3.2"
+
+    // Lombok (Optional, but very helpful for reducing boilerplate code)
+    // compileOnly 'org.projectlombok:lombok:1.18.30'
+    // annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    // Add any other dependencies you foresee needing
+    // For example, if you plan to use a database library like HikariCP:
+    // implementation 'com.zaxxer:HikariCP:5.1.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.add("-Xlint:all") // Optional: enable more compiler warnings
+    options.compilerArgs.add("-Xlint:-processing") // Optional: disable annotation processing warnings if using Lombok without full setup
+}
+
+shadowJar {
+    archiveClassifier = '' // Removes the '-all' suffix from the shadow JAR
+    // If you add libraries like HikariCP, you might need to relocate them to avoid conflicts
+    // relocate 'com.zaxxer.hikari', 'your.plugin.package.libs.hikaricp'
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}

@@ -1,0 +1,53 @@
+# MMOCraftNextGen - Loot Table Definitions (loot_tables.yml)
+
+loot_tables:
+  crypt_ghoul_common:
+    min_guaranteed_rolls: 1 # Will always try to roll at least once
+    max_guaranteed_rolls: 2 # Up to 2 items based on individual chances
+    # min_bonus_rolls: 0
+    # max_bonus_rolls: 1
+    # chance_for_bonus_roll: 0.25 # 25% chance to get 0-1 bonus rolls
+    entries:
+      # Entry keys (0, 1, bone_drop) are just for organization in YAML, not used by code directly
+      0:
+        item_id: "VANILLA:ROTTEN_FLESH"
+        min_amount: 2
+        max_amount: 4
+        drop_chance: 0.80 # 80% chance for this entry to be considered in a roll
+        weight: 10 # If multiple items pass drop_chance, higher weight is more likely
+      1:
+        item_id: "VANILLA:BONE"
+        min_amount: 1
+        max_amount: 2
+        drop_chance: 0.60
+        weight: 8
+      tattered_cloth_drop: # Example custom item drop
+        item_id: "tattered_cloth" # Assumes 'tattered_cloth' is defined in items.yml
+        min_amount: 1
+        max_amount: 1
+        drop_chance: 0.15 # 15% chance
+        weight: 3
+        # required_permission: "mmocraft.loot.can_get_rare_cloth" # Optional permission check on killer
+
+  skeleton_archer_enhanced:
+    min_guaranteed_rolls: 1
+    max_guaranteed_rolls: 1
+    entries:
+      arrow_bundle:
+        item_id: "VANILLA:ARROW"
+        min_amount: 3
+        max_amount: 8
+        drop_chance: 0.9
+        weight: 1
+      bow_chance:
+        item_id: "VANILLA:BOW"
+        min_amount: 1
+        max_amount: 1
+        drop_chance: 0.05 # Low chance to drop their bow
+        weight: 1
+      rare_quiver_fragment: # Custom item
+        item_id: "quiver_fragment_tier1"
+        min_amount: 1
+        max_amount: 1
+        drop_chance: 0.02
+        weight: 1

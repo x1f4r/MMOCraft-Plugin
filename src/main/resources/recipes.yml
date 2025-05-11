@@ -1,0 +1,77 @@
+# MMOCraftNextGen - Custom Recipe Definitions (recipes.yml)
+
+recipes:
+  # --- Shaped Recipe Example: Sturdy Pickaxe ---
+  sturdy_pickaxe_craft:
+    type: SHAPED
+    result:
+      item_id: "sturdy_pickaxe" # ItemService ID
+      amount: 1
+    shape: # Max 3x3. Character represents an ingredient key. Space means empty.
+      - "DDD"
+      - " S "
+      - " S "
+    ingredients: # Map: Key (char from shape) -> Ingredient Definition
+      D: { type: MATERIAL, value: DIAMOND, amount: 1 }
+      S: { type: MATERIAL, value: STICK, amount: 1 }
+
+  # --- Shapeless Recipe Example: Enhanced Bread ---
+  enhanced_bread_craft:
+    type: SHAPELESS
+    result:
+      item_id: "enhanced_bread" # Assume this is a custom item defined in items.yml
+      amount: 1
+    ingredients: # List of ingredient definitions
+      - { type: MATERIAL, value: BREAD, amount: 1 }
+      - { type: MATERIAL, value: GOLD_NUGGET, amount: 3 }
+    # strict_shapeless_ingredient_count: false # Default: false (allows other items in grid if not used)
+
+  # --- Example using a Custom Item as an Ingredient ---
+  legendary_sword_upgrade:
+    type: SHAPED
+    result: { item_id: "legendary_sword_mk2" }
+    shape:
+      - " N "
+      - "NSN"
+      - " N "
+    ingredients:
+      S: { type: ITEM, value: "common_sword", amount: 1 } # Requires the 'common_sword' CustomItem
+      N: { type: MATERIAL, value: NETHERITE_INGOT, amount: 1 }
+
+  # --- Example using a Bukkit Material Tag ---
+  wooden_tag_bundle:
+    type: SHAPELESS
+    result: { item_id: "VANILLA:OAK_LOG", amount: 4 } # Example result
+    ingredients:
+      - { type: TAG, value: "LOGS", amount: 2 } # Requires 2 items from the Bukkit #LOGS tag
+      # Note: 'LOGS' will be resolved to Tag.LOGS by RecipeService
+      # For custom tags like "#MMO_ORES", RecipeService would need a custom tag manager.
+
+  # --- Example for Compactor: Enchanted Coal Block (from your old example) ---
+  # This is how RecipeService.findCompactingRecipeForItem would identify it.
+  enchanted_coal_block_compact:
+    type: SHAPELESS # Compactors typically use shapeless logic
+    result: { item_id: "enchanted_coal_block_item" } # Assuming this is a custom item
+    ingredients:
+      - { type: MATERIAL, value: COAL_BLOCK, amount: 160 } # 160 coal blocks -> 1 enchanted
+      # Or if using COAL directly:
+      # - { type: MATERIAL, value: COAL, amount: 1440 } # 160 * 9
+
+  # --- Example for Compactor: Enchanted Coal (if result is a custom item) ---
+  # RecipeService.findCompactingRecipeForItem will look for recipes like this.
+  enchanted_coal_from_coal_compact:
+    type: SHAPELESS
+    result:
+      item_id: "enchanted_coal_custom" # Assuming enchanted_coal_custom is defined in items.yml
+      amount: 1
+    ingredients:
+      - { type: MATERIAL, value: COAL, amount: 160 }
+
+  # --- Example for Compactor: Iron Block (if result is vanilla) ---
+  iron_block_from_ingots_compact:
+    type: SHAPELESS
+    result:
+      item_id: "VANILLA:IRON_BLOCK" # Result is a vanilla item
+      amount: 1
+    ingredients:
+      - { type: MATERIAL, value: IRON_INGOT, amount: 9 }

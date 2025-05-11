@@ -1,0 +1,56 @@
+# MMOCraftNextGen - Mob Stat Overrides (mobs.yml)
+# This file defines stat modifications for VANILLA mob types.
+# Custom mobs with unique behaviors will be defined in custom_mobs.yml (Part 6).
+
+mobs:
+  # EntityType name (uppercase)
+  ZOMBIE:
+    maxHealth: 150.0       # MMOCraft max health, will be set as Bukkit's base
+    defense: 10            # Custom MMOCraft defense stat
+    strength: 25           # Value for Bukkit's GENERIC_ATTACK_DAMAGE base
+    speedPercent: -10      # -10% of vanilla base speed (slower)
+    critChance: 0          # 0% chance to critically hit
+    critDamage: 0          # +0% bonus damage on crit
+    # maxMana: 0           # If zombies were to use mana for abilities
+
+  SKELETON:
+    maxHealth: 100.0
+    defense: 5
+    strength: 5            # Skeletons' arrow damage is also affected by projectile settings
+      # This 'strength' primarily affects their melee if they attempt it
+    # and can serve as a base for projectile damage calculations.
+    speedPercent: 0        # Vanilla speed
+    critChance: 10         # 10% crit chance
+    critDamage: 25         # +25% bonus damage on crit
+
+  CREEPER:
+    maxHealth: 80.0
+    defense: 20            # More defense, but still glass cannon
+    strength: 1            # Explosion damage is separate, strength is for melee
+    speedPercent: 5
+    # Explosion power/radius could be another stat here if you want to customize it beyond vanilla attributes
+
+  SPIDER:
+    maxHealth: 90.0
+    defense: 8
+    strength: 20
+    speedPercent: 15       # Faster spiders
+
+  ENDERMAN:
+    maxHealth: 200.0
+    defense: 25
+    strength: 40
+    speedPercent: 0
+    critChance: 15
+    critDamage: 75
+    # Example for a mob that might have mana
+    # maxMana: 50
+
+  # --- Example for a "tougher" variant of a common mob via stats ---
+  # In Part 6, this would likely become a CustomMobType if it has different AI/loot
+  # For Part 3, this just shows overriding stats for a vanilla type.
+  # HUSK:
+  #   maxHealth: 250.0
+  #   defense: 15
+  #   strength: 35
+  #   speedPercent: -15

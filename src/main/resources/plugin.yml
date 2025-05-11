@@ -1,0 +1,121 @@
+name: MMOCraft-Plugin # Or your chosen plugin name
+version: '${project.version}' # Gradle replaces this
+main: io.github.x1f4r.mmocraft.MMOCraft
+api-version: '1.21'
+authors: [x1f4r] # Your username
+description: The next generation MMOCraft engine for Purpur.
+# website: your.website.com # Optional
+# softdepend: [ProtocolLib] # Example if you add ProtocolLib later
+
+commands:
+  # --- Master Admin Command ---
+  mmocadmin:
+    description: Main MMOCraft administration command.
+    aliases: [mmca, mmocadm]
+    permission: mmocraft.admin # Base permission to access any /mmocadmin functionality
+    usage: |
+      /<command> <system|player|item|mob> <subcommand> [args...]
+      Type '/<command> help' or '/<command> <category> help' for more info.
+
+  # --- User Commands ---
+  customcraft:
+    description: Opens the custom MMO crafting GUI.
+    aliases: [mcraft, mmocraftgui]
+    permission: mmocraft.user.command.customcraft
+    usage: /<command>
+  mmostats:
+    description: Displays your current MMOCraft stats.
+    aliases: [mystats, mmstats]
+    permission: mmocraft.user.command.stats
+    usage: /<command>
+
+permissions:
+  # --- Base Admin Permission ---
+  mmocraft.admin:
+    description: Grants access to the base /mmocadmin command and its help.
+    default: op
+
+  # --- System Admin Permissions ---
+  mmocraft.admin.system.*:
+    description: Grants access to all system administration subcommands.
+    default: op
+    children:
+      mmocraft.admin.system.reload: true
+      mmocraft.admin.system.debug: true
+  mmocraft.admin.system.reload:
+    description: Allows reloading plugin configurations.
+    default: op
+  mmocraft.admin.system.debug:
+    description: Allows toggling debug modes.
+    default: op
+
+  # --- Player Admin Permissions ---
+  mmocraft.admin.player.*:
+    description: Grants access to all player administration subcommands.
+    default: op
+    children:
+      mmocraft.admin.player.stats.set: true
+      mmocraft.admin.player.stats.add: true
+      mmocraft.admin.player.stats.get: true
+      mmocraft.admin.player.resource.set: true
+  mmocraft.admin.player.stats.set:
+    description: Allows setting a player's base stats.
+    default: op
+  mmocraft.admin.player.stats.add:
+    description: Allows adding to a player's base stats.
+    default: op
+  mmocraft.admin.player.stats.get:
+    description: Allows viewing a player's base and calculated stats.
+    default: op
+  mmocraft.admin.player.resource.set:
+    description: Allows setting a player's current health or mana.
+    default: op
+
+  # --- Item Admin Permissions ---
+  mmocraft.admin.item.*:
+    description: Grants access to all item administration subcommands.
+    default: op
+    children:
+      mmocraft.admin.item.give: true
+      mmocraft.admin.item.info: true
+      mmocraft.admin.item.list: true
+  mmocraft.admin.item.give:
+    description: Allows giving custom items to players.
+    default: op
+  mmocraft.admin.item.info:
+    description: Allows viewing information about custom item templates.
+    default: op
+  mmocraft.admin.item.list:
+    description: Allows listing all defined custom item IDs.
+    default: op
+
+  # --- Mob Admin Permissions ---
+  mmocraft.admin.mob.*:
+    description: Grants access to all mob administration subcommands.
+    default: op
+    children:
+      mmocraft.admin.mob.spawn: true
+      mmocraft.admin.mob.list: true
+      mmocraft.admin.mob.killall: true
+  mmocraft.admin.mob.spawn:
+    description: Allows spawning custom mobs.
+    default: op
+  mmocraft.admin.mob.list:
+    description: Allows listing all defined custom mob type IDs.
+    default: op
+  mmocraft.admin.mob.killall:
+    description: Allows removing custom mobs from the world.
+    default: op
+
+  # --- User Command Permissions ---
+  mmocraft.user.command.customcraft:
+    description: Allows players to open the custom crafting GUI.
+    default: true # Or false if you want it permission-based only
+  mmocraft.user.command.stats:
+    description: Allows players to view their own MMOCraft stats.
+    default: true
+
+  # --- Specific Ability Permissions (Optional - if you implement per-ability use perms) ---
+  # mmocraft.user.ability.<ability_id>:
+  #   description: Allows use of the specific ability <ability_id>.
+  #   default: true # Or false, depending on your design

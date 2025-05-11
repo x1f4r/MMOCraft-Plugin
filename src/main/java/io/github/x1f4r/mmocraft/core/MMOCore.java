@@ -1,0 +1,247 @@
+package io.github.x1f4r.mmocraft.core;
+
+import io.github.x1f4r.mmocraft.MMOCraft;
+// Import specific services as they are created and needed for registration order
+import io.github.x1f4r.mmocraft.services.ConfigService;
+import io.github.x1f4r.mmocraft.services.LoggingService;
+import io.github.x1f4r.mmocraft.services.NBTService;
+import io.github.x1f4r.mmocraft.services.ItemService;
+import io.github.x1f4r.mmocraft.services.PersistenceService;
+import io.github.x1f4r.mmocraft.services.PlayerDataService;
+import io.github.x1f4r.mmocraft.services.PlayerStatsService;
+import io.github.x1f4r.mmocraft.services.PlayerResourceService;
+import io.github.x1f4r.mmocraft.services.PlayerInterfaceService;
+import io.github.x1f4r.mmocraft.services.CustomMobService;
+import io.github.x1f4r.mmocraft.services.MobDropService;
+import io.github.x1f4r.mmocraft.services.AbilityService;
+import io.github.x1f4r.mmocraft.services.RecipeService;
+import io.github.x1f4r.mmocraft.services.CraftingGUIService;
+import io.github.x1f4r.mmocraft.services.EntityStatsService;
+import io.github.x1f4r.mmocraft.services.CombatService;
+import io.github.x1f4r.mmocraft.services.VisualFeedbackService;
+import io.github.x1f4r.mmocraft.services.ToolProficiencyService;
+import io.github.x1f4r.mmocraft.services.CompactorService;
+import io.github.x1f4r.mmocraft.services.CommandService;
+
+
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.event.Listener;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap; // Preserves insertion order for ordered init/shutdown
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+
+public class MMOCore {
+    private final MMOCraft plugin;
+    // Use LinkedHashMap to maintain registration order for initialization and shutdown
+    private final Map<Class<? extends Service>, Service> services = new LinkedHashMap<>();
+    private LoggingService internalLogger; // Dedicated logger for MMOCore, initialized first
+
+    public MMOCore(MMOCraft plugin) {
+        this.plugin = plugin;
+    }
+
+    /**
+     * Initializes and enables all registered services for the plugin.
+     * This method is called from {@link MMOCraft#onEnable()}.
+     * @throws Exception if any critical service fails to initialize.
+     */
+    public void onEnable() throws Exception {
+        // Initialize LoggingService first as it's used by MMOCore itself and other services during their init.
+        this.internalLogger = new LoggingService(this.plugin); // Pass plugin instance for its logger
+        try {
+            // Manually initialize internalLogger before it's formally "registered" as a service
+            // to allow MMOCore to use it for logging the registration of other services.
+            this.internalLogger.initialize(this); // Pass 'this' MMOCore instance
+        } catch (Exception e) {
+            // If internal logger fails, use the raw plugin logger.
+            MMOCraft.getPluginLogger().log(Level.SEVERE, "Failed to initialize MMOCore's internal LoggingService!", e);
+            throw new IllegalStateException("MMOCore internal logger could not be initialized.", e);
+        }
+
+        internalLogger.info("MMOCore enabling sequence initiated...");
+
+        // --- Register services in their intended initialization order ---
+        // Foundational Services
+        registerService(this.internalLogger, LoggingService.class); // Now formally register it
+        registerService(new NBTService(this.plugin), NBTService.class);
+        registerService(new ConfigService(this.plugin), ConfigService.class);
+        registerService(new CustomMobService(this), CustomMobService.class);
+        // EntityStatsService might be needed by CustomMobService later, so register it reasonably early.
+        registerService(new EntityStatsService(this), EntityStatsService.class);
+        // VisualFeedbackService depends on EntityStatsService for initial health bar data.
+        registerService(new VisualFeedbackService(this), VisualFeedbackService.class);
+        // CombatService depends on PlayerStats, EntityStats, and VisualFeedback.
+        registerService(new CombatService(this), CombatService.class);
+        registerService(new ItemService(this), ItemService.class);
+        registerService(new AbilityService(this), AbilityService.class); // Foundational for Part 2, full in Part 5
+        registerService(new RecipeService(this), RecipeService.class);
+        registerService(new CraftingGUIService(this), CraftingGUIService.class);
+        registerService(new ToolProficiencyService(this), ToolProficiencyService.class);
+        // PersistenceService depends on LoggingService
+        registerService(new PersistenceService(getService(LoggingService.class)), PersistenceService.class);
+        registerService(new ToolProficiencyService(this), ToolProficiencyService.class);
+        registerService(new CompactorService(this), CompactorService.class);
+        registerService(new CommandService(this), CommandService.class); // Register CommandService
+
+        // Player-centric Services (dependencies are resolved via getService within their initialize methods)
+        // Pass 'this' (MMOCore) to service constructors if they need to access multiple other services during init.
+        registerService(new PlayerDataService(this), PlayerDataService.class);
+        registerService(new PlayerStatsService(this), PlayerStatsService.class);
+        registerService(new PlayerResourceService(this), PlayerResourceService.class);
+        registerService(new PlayerInterfaceService(this), PlayerInterfaceService.class);
+        // AbilityService needs to be ready for ItemService if ItemService generates ability lore at init
+        registerService(new AbilityService(this), AbilityService.class); // ABILITIES FIRST
+        registerService(new ItemService(this), ItemService.class);       // THEN ITEMS
+
+        registerService(new RecipeService(this), RecipeService.class);
+        registerService(new CraftingGUIService(this), CraftingGUIService.class);
+
+// --- Part 3 Services ---
+        registerService(new EntityStatsService(this), EntityStatsService.class);
+        registerService(new VisualFeedbackService(this), VisualFeedbackService.class);
+        registerService(new CombatService(this), CombatService.class);
+
+// --- Part 4 Services ---
+        registerService(new ToolProficiencyService(this), ToolProficiencyService.class);
+        registerService(new CompactorService(this), CompactorService.class);
+
+        // --- Initialize all registered services in the order they were registered ---
+        for (Map.Entry<Class<? extends Service>, Service> entry : services.entrySet()) {
+            Service service = entry.getValue();
+            // Skip re-initializing internalLogger if it's the one we set up first for MMOCore logging
+            if (service == this.internalLogger && entry.getKey().equals(LoggingService.class)) {
+                // internalLogger was already initialized above, so skip its formal init call here.
+                continue;
+            }
+            try {
+                internalLogger.info("Initializing service: " + service.getServiceName() + " (" + service.getClass().getName() + ")");
+                service.initialize(this);
+            } catch (Exception e) {
+                internalLogger.severe("Critical failure initializing service: " + service.getServiceName(), e);
+                throw e; // Propagate to stop plugin enable if a service fails critically
+            }
+        }
+        internalLogger.info("All services initialized successfully.");
+    }
+
+    /**
+     * Shuts down all registered services.
+     * This method is called from {@link MMOCraft#onDisable()}.
+     */
+    public void onDisable() {
+        if (internalLogger == null) {
+            MMOCraft.getPluginLogger().warning("MMOCore internal logger is null during onDisable. Service shutdown might be incomplete.");
+            // Attempt to proceed if possible, but this indicates an issue during onEnable.
+        } else {
+            internalLogger.info("MMOCore disabling sequence initiated...");
+        }
+
+        // Shutdown in reverse order of registration (LinkedHashMap helps by iterating values)
+        List<Service> reversedServices = new ArrayList<>(services.values());
+        java.util.Collections.reverse(reversedServices);
+
+        for (Service service : reversedServices) {
+            // If internalLogger is the one being shut down, or if it's null, use plugin's raw logger
+            Logger loggerToUse = (service == this.internalLogger || internalLogger == null) ? MMOCraft.getPluginLogger() : internalLogger;
+            try {
+                loggerToUse.info("Shutting down service: " + service.getServiceName());
+                service.shutdown();
+            } catch (Exception e) {
+                loggerToUse.log(Level.SEVERE, "Error shutting down service: " + service.getServiceName(), e);
+            }
+        }
+        services.clear();
+        if (internalLogger != null) {
+            internalLogger.info("All services shut down.");
+        } else {
+            MMOCraft.getPluginLogger().info("MMOCore service shutdown process complete (internal logger was unavailable).");
+        }
+    }
+
+    /**
+     * Registers a service instance with the MMOCore.
+     * Services are initialized in the order they are registered.
+     * @param service The service instance to register.
+     * @param registrationClass The class (usually an interface or the service's own class) to use as the key for retrieving this service.
+     */
+    public void registerService(Service service, Class<? extends Service> registrationClass) {
+        // Use internalLogger if available, otherwise the raw plugin logger for registration messages.
+        Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
+
+        if (services.containsKey(registrationClass)) {
+            logger.warning("Service already registered for key: " + registrationClass.getName() +
+                    ". Overwriting. Ensure this is intended. Old: " + services.get(registrationClass).getClass().getName() +
+                    ", New: " + service.getClass().getName());
+        }
+        services.put(registrationClass, service);
+        logger.info("Registered service: " + service.getServiceName() + " under key " + registrationClass.getSimpleName());
+    }
+
+    /**
+     * Registers a service instance using its own class as the registration key.
+     * @param service The service instance to register.
+     */
+    public void registerService(Service service) {
+        registerService(service, service.getClass());
+    }
+
+    /**
+     * Retrieves a registered service instance.
+     * @param serviceClass The class key used to register the service (usually an interface or the service's class).
+     * @param <T> The type of the service.
+     * @return The registered service instance.
+     * @throws IllegalStateException if the service is not found.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Service> T getService(Class<T> serviceClass) {
+        Service service = services.get(serviceClass);
+        if (service == null) {
+            String message = "Service not found: " + serviceClass.getName() +
+                    ". Ensure it is registered and initialized before access, and check registration order.";
+            // Use internalLogger if available, otherwise the raw plugin logger for this critical error.
+            Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
+            logger.severe(message);
+            throw new IllegalStateException(message);
+        }
+        try {
+            return (T) service;
+        } catch (ClassCastException e) {
+            String message = "Service type mismatch for: " + serviceClass.getName() +
+                    ". Registered as " + service.getClass().getName() + ".";
+            Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
+            logger.severe(message);
+            throw new IllegalStateException(message, e);
+        }
+    }
+
+    public MMOCraft getPlugin() {
+        return plugin;
+    }
+
+    // --- Convenience methods for services to register listeners/commands via MMOCore ---
+    public void registerListener(Listener listener) {
+        plugin.getServer().getPluginManager().registerEvents(listener, plugin);
+        // Logging this action is good, use internalLogger if available.
+        Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
+        logger.fine("Registered listener: " + listener.getClass().getSimpleName());
+    }
+
+    public void registerCommand(String commandNameInPluginYml, CommandExecutor executor, @javax.annotation.Nullable TabCompleter tabCompleter) {
+        PluginCommand command = plugin.getCommand(commandNameInPluginYml);
+        Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
+        if (command != null) {
+            command.setExecutor(executor);
+            if (tabCompleter != null) {
+                command.setTabCompleter(tabCompleter);
+            }
+            logger.info("Registered command handler for /" + commandNameInPluginYml);
+        } else {
+            logger.warning("Command '/" + commandNameInPluginYml + "' not found in plugin.yml! Cannot register handler.");
+        }
+    }
+}

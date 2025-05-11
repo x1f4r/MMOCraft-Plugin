@@ -1,0 +1,102 @@
+# MMOCraftNextGen Main Configuration
+
+logging:
+  debug_mode: true # Keep true for development
+
+# Player Defaults (for PlayerProfile when no data exists)
+player_defaults:
+  base_stats:
+    strength: 0
+    defense: 0
+    crit_chance: 5
+    crit_damage: 50
+    max_health: 20
+    max_mana: 100
+    speed: 0 # This is speedPercent in PlayerProfile
+    mining_speed: 0
+    foraging_speed: 0
+    fishing_speed: 0
+    shooting_speed: 0
+
+# Player Regeneration Settings (used by PlayerResourceService)
+player:
+  regeneration:
+    health:
+      enabled: true
+      percentage_of_max_health: 0.01 # 1%
+      flat_amount: 0.5
+      interval_ticks: 40 # 2 seconds
+    mana:
+      enabled: true
+      percentage_of_max_mana: 0.02 # 2%
+      flat_amount: 1
+      interval_ticks: 20 # 1 second
+
+# Entity Visuals (for VisualFeedbackService)
+entity_visuals:
+  damage_indicators:
+    enabled: true
+    duration_ticks: 25        # How long indicators last (1.25 seconds)
+    rise_per_tick: 0.06       # How fast indicators float upwards (blocks per tick)
+    color_normal: "#AAAAAA"   # Hex color for normal damage (Gray)
+    color_crit: "#FFAA00"     # Hex color for critical damage (Orange-Yellow)
+    color_true_damage: "#FFFFFF" # Hex color for true damage (White)
+  health_bars:
+    enabled: true
+    y_offset: 0.5             # Blocks above entity's natural height for the bar
+    update_interval_ticks: 10 # How often to update health bar position/text (0.5 seconds)
+
+  interface: # For PlayerInterfaceService
+    action_bar:
+      enabled: true
+      interval_ticks: 20 # Update action bar every second
+      # colors: # Future: make colors configurable
+      #   health_value: "#FF5555" # Bright Red
+      #   health_max: "#AA0000"   # Dark Red
+      #   mana_value: "#5555FF"   # Bright Blue
+      #   mana_max: "#0000AA"     # Dark Blue
+      #   separator: "#555555"    # Dark Gray
+
+tools:
+  treecapitator:
+    # Maximum number of additional logs a Treecapitator ability can break in one go.
+    max_logs: 150
+    # Base cooldown in ticks for the Treecapitator ability (20 ticks = 1 second).
+    # This can be overridden by NBT on specific Treecapitator items.
+    base_cooldown_ticks: 40 # 2 seconds
+
+  block_breaking:
+    # This multiplier is applied to the block's 'hardness' to get a base tick value.
+    # Higher value means blocks take longer to break before other modifiers.
+    # Needs careful calibration against vanilla feel.
+    base_hardness_to_ticks_multiplier: 20.0 # e.g. Stone (hardness 1.5) * 20 = 30 base ticks.
+
+    # How much each level of the Efficiency enchantment speeds up breaking.
+    # Example: 0.25 means Efficiency V gives (1 + 5*0.25) = 2.25x speed from efficiency.
+    # Vanilla formula for "damage" is level^2+1. For speed, it's more complex.
+    # This is a simplified multiplier for our custom system.
+    efficiency_bonus_per_level: 0.30 # Each level adds 30% to a speed factor component
+
+    # How much each level of Haste potion effect speeds up breaking.
+    # Example: 0.20 means Haste II gives (1 + 2*0.20) = 1.4x speed from Haste.
+    haste_effect_strength_per_level: 0.20
+
+    # Tool tier base speed multipliers (applied before player stats, efficiency, haste)
+    # These represent how much faster a tool is than "hand" breaking (which is 1.0).
+    # Values need calibration. Gold is fast but low durability.
+    tool_tier_multipliers:
+      HAND: 1.0
+      WOOD: 2.0
+      STONE: 4.0
+      IRON: 6.0
+      DIAMOND: 8.0
+      NETHERITE: 9.0
+      GOLD: 12.0
+      # Add custom tool material tiers here if you introduce them
+      # EXAMPLE_CUSTOM_TOOL_TIER: 15.0
+
+    # Penalty multiplier if mining while not on ground (e.g., flying, swimming without specific enchants)
+    not_on_ground_penalty_multiplier: 5.0 # Makes breaking 5x slower
+
+    # Speed multiplier if player has Aqua Affinity and is in water.
+    aqua_affinity_in_water_multiplier: 5.0 # Makes breaking 5x faster (counteracts water penalty)

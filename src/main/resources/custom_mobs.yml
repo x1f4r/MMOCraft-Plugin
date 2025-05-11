@@ -1,0 +1,69 @@
+# MMOCraftNextGen - Custom Mob Definitions (custom_mobs.yml)
+
+custom_mobs:
+  crypt_ghoul:
+    base_entity_type: ZOMBIE
+    display_name: "&cCrypt Ghoul"
+    stats: # These stats are specific to this CustomMobType
+      maxHealth: 180.0
+      defense: 15
+      strength: 30      # For its melee attacks
+      speedPercent: 10   # 10% faster than a standard ZOMBIE base speed
+      critChance: 5
+      critDamage: 20
+      maxMana: 0 # No mana needed for these simple behaviors
+    ai_behavior_ids: # List of AIBehavior IDs registered in CustomMobService
+      - "basic_melee_crypt_ghoul" # A specific variant if needed, or use generic "basic_melee"
+      - "random_stroll_fast"
+      - "look_at_player_target"
+    custom_loot_table_id: "crypt_ghoul_common" # Links to loot_tables.yml
+    equipment: # Optional: ItemService ID or "VANILLA:MATERIAL_NAME"
+      HAND: "VANILLA:IRON_SWORD" # Main hand
+      # OFF_HAND: "VANILLA:SHIELD"
+      HEAD: "VANILLA:LEATHER_HELMET"
+      # CHEST: ... LEGS: ... FEET: ...
+    spawn_rules:
+      replace_vanilla: true # If true, can replace ZOMBIE spawns
+      target_vanilla_type: ZOMBIE # Only if baseEntityType matches (redundant but clear)
+      replace_chance: 0.25 # 25% chance to replace a ZOMBIE with a Crypt Ghoul
+      weight: 20 # Higher weight = more common if multiple custom mobs can replace same vanilla
+      biomes: # List of biomes (uppercase BUKKIT Biome enum names)
+        - "PLAINS"
+        - "FOREST"
+        - "SWAMP" # Example
+      min_spawn_light_level: 0 # Optional
+      max_spawn_light_level: 7 # Optional
+      # min_spawn_y: 0 # Optional
+      # max_spawn_y: 60 # Optional
+      # required_world: "world" # Optional
+    generic_nbt_data: # Raw NBT tags for the entity (use with caution)
+      # IsBaby: false # Example for Zombies if base is ZOMBIE
+      Silent: false
+
+  enraged_skeleton_archer:
+    base_entity_type: SKELETON
+    display_name: "&eEnraged Archer"
+    stats:
+      maxHealth: 120.0
+      defense: 8
+      strength: 10 # Base for ranged/melee if it tries
+      speedPercent: 5
+      critChance: 15
+      critDamage: 50
+    ai_behavior_ids:
+      # Skeletons have good vanilla ranged AI. We might add:
+      - "strafe_target_while_shooting" # Custom behavior (not implemented in this batch)
+      - "evasive_maneuvers"          # Custom behavior (not implemented)
+      - "look_at_player_target"
+      # If no custom behaviors, it uses vanilla AI + our stats.
+      # Purpur Goal system would be ideal here for modifying vanilla goals.
+    custom_loot_table_id: "skeleton_archer_enhanced"
+    equipment:
+      HAND: "VANILLA:BOW" # Ensures it has a bow
+    spawn_rules:
+      replace_vanilla: true
+      target_vanilla_type: SKELETON
+      replace_chance: 0.15
+      weight: 15
+      biomes: ["DESERT", "BADLANDS"]
+      # ... other rules
