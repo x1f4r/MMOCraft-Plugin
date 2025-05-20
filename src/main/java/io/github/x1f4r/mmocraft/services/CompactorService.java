@@ -11,6 +11,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer; // Added import
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -104,7 +105,7 @@ public class CompactorService implements Service {
         Component guiTitleComponent = COMPACTOR_GUI_TITLE_COMPONENT_PREFIX.append(Component.text(utilityId, NamedTextColor.YELLOW));
         String guiTitleString = LegacyComponentSerializer.legacySection().serialize(guiTitleComponent);
 
-        Inventory gui = Bukkit.createInventory(player, 27, guiTitleString); // Owner is player
+        Inventory gui = Bukkit.createInventory(player, 27, guiTitleComponent); // Changed to use Component title
 
         // Fill background with placeholders
         for (int i = 0; i < gui.getSize(); i++) {
@@ -252,7 +253,7 @@ public class CompactorService implements Service {
                         RequiredIngredient ingredient = compactingRecipe.shapelessIngredients().get(0);
                         int amountNeededForOneCraft = ingredient.amount();
                         ItemStack resultTemplate = compactingRecipe.getResult(itemService);
-                        String resultItemName = LegacyComponentSerializer.plain().serialize(
+                        String resultItemName = PlainTextComponentSerializer.plainText().serialize( // Changed to PlainTextComponentSerializer
                                 resultTemplate.getItemMeta() != null && resultTemplate.getItemMeta().hasDisplayName() ?
                                         Objects.requireNonNull(resultTemplate.getItemMeta().displayName()) : Component.text(formatMaterialName(resultTemplate.getType()))
                         ).trim();
@@ -281,7 +282,7 @@ public class CompactorService implements Service {
                             player.sendMessage(Component.text("Compacted " + amountNeededForOneCraft + " " + formatMaterialName(pickedUpMaterial).toLowerCase() +
                                     " into " + resultItemName + "!", NamedTextColor.GREEN));
                             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.7f, 1.5f);
-                            if (logging.isInfoEnabled()) logging.info("Compacted " + amountNeededForOneCraft + " " + pickedUpMaterial.name() + " for " + player.getName() + " via " + utilityId + " to " + resultItemName);
+                            logging.info("Compacted " + amountNeededForOneCraft + " " + pickedUpMaterial.name() + " for " + player.getName() + " via " + utilityId + " to " + resultItemName); // Changed isInfoEnabled
 
                             // Adjust the picked-up item stack entity
                             int remainingInPickupStack = itemsInPickedUpStackEntity - itemsToConsumeFromPickup;

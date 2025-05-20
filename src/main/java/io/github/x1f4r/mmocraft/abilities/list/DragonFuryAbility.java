@@ -22,8 +22,11 @@ import org.bukkit.util.Vector;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 public class DragonFuryAbility extends AbstractItemAbility {
+
+    private static final Random random = new Random();
 
     public DragonFuryAbility() {
         // ID, Display Name, Default Mana, Default Cooldown Ticks
@@ -91,9 +94,10 @@ public class DragonFuryAbility extends AbstractItemAbility {
 
 
         int hitCount = 0;
-        for (LivingEntity entity : player.getWorld().getNearbyEntities(eyeLoc, range, range, range,
+        // The predicate already ensures that entities are LivingEntity, so the cast is safe.
+        for (org.bukkit.entity.Entity entityRaw : player.getWorld().getNearbyEntities(eyeLoc, range, range, range,
                 e -> e instanceof LivingEntity && !e.equals(player) && !(e instanceof ArmorStand) && e.isValid() && !e.isDead() && player.hasLineOfSight(e))) {
-
+            LivingEntity entity = (LivingEntity) entityRaw;
             Vector toEntity = entity.getLocation().add(0, entity.getHeight()/2, 0).subtract(eyeLoc).toVector().normalize();
             double angleToEntity = Math.toDegrees(toEntity.angle(direction));
 

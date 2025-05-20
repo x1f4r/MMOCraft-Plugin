@@ -3,7 +3,9 @@ package io.github.x1f4r.mmocraft.entities.listeners;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.services.CustomMobService;
 import io.github.x1f4r.mmocraft.services.EntityStatsService;
+import io.github.x1f4r.mmocraft.services.LoggingService; // Added import
 import io.github.x1f4r.mmocraft.services.VisualFeedbackService; // Optional, for direct VFS interaction if needed
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer; // Added import
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -40,8 +42,12 @@ public class CustomMobLifecycleListener implements Listener {
             // `spawnCustomMob` in CustomMobService already handles applying stats, AI, NBT, etc.
             // to `replacedEntity`. EntityStatsService.applyStatsToEntity is called within spawnCustomMob.
             // VisualFeedbackService is also triggered by EntityStatsService.
+            String customNameString = "";
+            if (replacedEntity.customName() != null) {
+                customNameString = PlainTextComponentSerializer.plainText().serialize(replacedEntity.customName());
+            }
             core.getService(LoggingService.class).debug("Vanilla spawn of " + entity.getType() +
-                    " replaced by custom mob " + replacedEntity.getCustomName() +
+                    " replaced by custom mob " + customNameString +
                     " (Type: " + replacedEntity.getType() + ")");
         } else {
             // No replacement occurred. This is either a vanilla mob we don't care about replacing,

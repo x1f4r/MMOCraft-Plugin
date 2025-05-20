@@ -266,38 +266,11 @@ public class ConfigService implements Service {
         logging.info("All configurations reload attempt finished.");
     }
 
-    /**
-     * Checks if a configuration file is currently managed by this service.
-     * @param configFileName The name of the config file (e.g., "items.yml").
-     * @return true if managed, false otherwise.
-     */
-    public boolean isManagedConfig(String configFileName) {
-        String normalizedName = configFileName.toLowerCase();
-        if (!normalizedName.endsWith(".yml")) {
-            normalizedName += ".yml";
-        }
-        return configFiles.containsKey(normalizedName);
-    }
-
-    /**
-     * Gets a list of managed configuration filenames (without the .yml extension).
-     * @return A list of config names.
-     */
-    public List<String> getManagedConfigFileNames() {
-        return Collections.unmodifiableList(
-                configFiles.keySet().stream()
-                        .map(name -> name.endsWith(".yml") ? name.substring(0, name.length() - 4) : name)
-                        .sorted()
-                        .collect(Collectors.toList())
-        );
-    }
-
-
     // --- Convenience Typed Getters for Main Config (config.yml) ---
     // These are examples; specific services might access their own configs directly
     // or you can add more generic typed getters for any config file.
 
-    public StringgetMainConfigString(String path, String def) {
+    public String getMainConfigString(String path, String def) {
         return getMainConfig().getString(path, def);
     }
     public int getMainConfigInt(String path, int def) {
@@ -311,5 +284,22 @@ public class ConfigService implements Service {
     }
     public List<String> getMainConfigStringList(String path) {
         return getMainConfig().getStringList(path);
+    }
+
+    // Default messages - can be overridden by config.yml
+    private static final String DEFAULT_NO_PERMISSION = "You do not have permission to use this command.";
+    private static final String DEFAULT_CONSOLE_NOT_ALLOWED = "This command cannot be run from the console.";
+    private static final String DEFAULT_COMMAND_ERROR = "An error occurred while executing the command. Please contact an administrator.";
+
+    public String getNoPermissionMessage() {
+        return getMainConfig().getString("messages.no_permission", DEFAULT_NO_PERMISSION);
+    }
+
+    public String getConsoleNotAllowedMessage() {
+        return getMainConfig().getString("messages.console_not_allowed", DEFAULT_CONSOLE_NOT_ALLOWED);
+    }
+
+    public String getCommandErrorMessage() {
+        return getMainConfig().getString("messages.command_error", DEFAULT_COMMAND_ERROR);
     }
 }

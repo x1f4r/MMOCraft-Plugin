@@ -26,6 +26,8 @@ repositories {
 dependencies {
     // Purpur API - this includes Paper, Spigot, and Bukkit APIs [1, 2]
     compileOnly "org.purpurmc.purpur:purpur-api:1.21.5-R0.1-SNAPSHOT" // Check Purpur's website for the latest 1.21.5 version string [2]
+    // Add Purpur server JAR for NMS/CraftBukkit compilation
+    compileOnly "org.purpurmc.purpur:purpur:1.21.5-R0.1-SNAPSHOT"
 
     // Adventure API (included with Paper/Purpur, but good to be aware of)
     // compileOnly "net.kyori:adventure-api:4.17.0"

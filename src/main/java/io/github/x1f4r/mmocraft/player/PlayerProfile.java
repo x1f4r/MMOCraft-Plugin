@@ -1,6 +1,8 @@
 package io.github.x1f4r.mmocraft.player;
 
+import io.github.x1f4r.mmocraft.core.MMOCore; // Added import
 import io.github.x1f4r.mmocraft.services.ConfigService;
+import io.github.x1f4r.mmocraft.services.LoggingService; // Added import
 import org.bukkit.configuration.ConfigurationSection; // For reading default stats
 
 import java.util.UUID;
@@ -38,7 +40,7 @@ public class PlayerProfile {
         this.playerId = playerId;
 
         // Fetch default base stats from config.yml (player_defaults.base_stats section)
-        ConfigurationSection defaultStatsConfig = configService.getMainConfigSection("player_defaults.base_stats");
+        ConfigurationSection defaultStatsConfig = configService.getMainConfig().getConfigurationSection("player_defaults.base_stats"); // Changed call
 
         if (defaultStatsConfig != null) {
             this.baseStrength = defaultStatsConfig.getInt("strength", 0);

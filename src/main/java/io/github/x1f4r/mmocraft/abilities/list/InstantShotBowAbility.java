@@ -4,6 +4,7 @@ import io.github.x1f4r.mmocraft.abilities.AbstractItemAbility;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.items.CustomItem;
 import io.github.x1f4r.mmocraft.player.stats.CalculatedPlayerStats;
+import io.github.x1f4r.mmocraft.services.AbilityService; // Added import
 import io.github.x1f4r.mmocraft.services.NBTService;
 import io.github.x1f4r.mmocraft.services.PlayerStatsService;
 import net.kyori.adventure.text.Component;
@@ -20,9 +21,12 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
 import java.util.List;
+import java.util.Random; // Added import
 import java.util.Set;
 
 public class InstantShotBowAbility extends AbstractItemAbility {
+
+    private static final Random random = new Random(); // Added random field
 
     public InstantShotBowAbility() {
         // ID, Display Name, Mana Cost (can be 0), Cooldown (dynamic based on shooting speed)
@@ -116,7 +120,7 @@ public class InstantShotBowAbility extends AbstractItemAbility {
 
             String customBowId = NBTService.get(bowPdc, NBTService.ITEM_ID_KEY, PersistentDataType.STRING, null);
             if (customBowId != null) {
-                NBTService.set(arrowPdc, NBTService.PROJECTILE_SOURCE_ITEM_ID_KEY, PersistentDataType.STRING, customBowId);
+                NBTService.set(arrowPdc, NBTService.PROJECTILE_SOURCE_ITEM_ID_KEY, PersistentDataType.STRING, customBowId); // Prefixed with NBTService
             }
             Integer projDamageMultiplier = NBTService.get(bowPdc, NBTService.PROJECTILE_DAMAGE_MULTIPLIER, PersistentDataType.INTEGER, null);
             if (projDamageMultiplier != null) {

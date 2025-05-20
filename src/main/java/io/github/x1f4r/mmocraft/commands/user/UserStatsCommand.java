@@ -3,6 +3,7 @@ package io.github.x1f4r.mmocraft.commands.user;
 import io.github.x1f4r.mmocraft.commands.AbstractMMOCommand;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.player.stats.CalculatedPlayerStats;
+import io.github.x1f4r.mmocraft.services.PlayerResourceService; // Added missing import
 import io.github.x1f4r.mmocraft.services.PlayerStatsService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;

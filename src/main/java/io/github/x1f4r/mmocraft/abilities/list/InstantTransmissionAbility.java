@@ -3,6 +3,7 @@ package io.github.x1f4r.mmocraft.abilities.list;
 import io.github.x1f4r.mmocraft.abilities.AbstractItemAbility;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.items.CustomItem;
+import io.github.x1f4r.mmocraft.services.AbilityService; // Added import
 import io.github.x1f4r.mmocraft.services.NBTService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -30,7 +31,7 @@ public class InstantTransmissionAbility extends AbstractItemAbility {
 
     @Override
     public List<Component> getDescription(CustomItem itemTemplate) {
-        int range = itemTemplate.getGenericNbtValue(NBTService.TELEPORT_RANGE_KEY_STRING, 8, Integer.class);
+        int range = itemTemplate.getGenericNbtValue(AbilityService.TELEPORT_RANGE_KEY_STRING, 8, Integer.class); // Changed NBTService to AbilityService
         return List.of(
                 Component.text("Teleport " + range + " blocks forward.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
         );
@@ -43,7 +44,7 @@ public class InstantTransmissionAbility extends AbstractItemAbility {
 
     @Override
     public boolean execute(Player player, ItemStack itemStack, CustomItem itemTemplate, MMOCore core) {
-        int teleportRange = itemTemplate.getGenericNbtValue(NBTService.TELEPORT_RANGE_KEY_STRING, 8, Integer.class);
+        int teleportRange = itemTemplate.getGenericNbtValue(AbilityService.TELEPORT_RANGE_KEY_STRING, 8, Integer.class); // Changed NBTService to AbilityService
         final int MAX_SAFETY_ITERATIONS = 5; // How many times to step back to find a safe spot
 
         Location eyeLoc = player.getEyeLocation();

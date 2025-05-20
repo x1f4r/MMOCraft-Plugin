@@ -1,11 +1,12 @@
 package io.github.x1f4r.mmocraft.compactors.listeners;
 
+import io.github.x1f4r.mmocraft.MMOCraft; // Added import
 import io.github.x1f4r.mmocraft.services.CompactorService;
 import io.github.x1f4r.mmocraft.services.NBTService; // For NBTService.COMPACTOR_UTILITY_ID_KEY
 import io.github.x1f4r.mmocraft.services.LoggingService; // For debugging
-import io.github.x1f4r.mmocraft.core.MMOCore; // To get LoggingService
+// MMOCore import was unused here, MMOCraft.getInstance().getCore() is used directly.
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer; // Changed import
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -63,7 +64,7 @@ public class CompactorInteractionListener implements Listener {
         // but for listener matching, checking string prefix is often simpler for Bukkit titles.
         // The CompactorService GUI_TITLE_COMPONENT should be used by CompactorService when creating the inventory.
         // Here, we check if the title *starts with* our known prefix.
-        String viewTitleString = PlainComponentSerializer.plain().serialize(event.getView().title());
+        String viewTitleString = PlainTextComponentSerializer.plainText().serialize(event.getView().title()); // Changed to PlainTextComponentSerializer
         if (!viewTitleString.startsWith(CompactorService.COMPACTOR_GUI_TITLE_PREFIX.replace("§8",""))) { // Compare plain string
             return;
         }

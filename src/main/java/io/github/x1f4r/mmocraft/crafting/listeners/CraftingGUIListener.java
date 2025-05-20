@@ -1,9 +1,10 @@
 package io.github.x1f4r.mmocraft.crafting.listeners;
 
-import io.github.x1f4r.mmocraft.MMOCraft;
 import io.github.x1f4r.mmocraft.services.CraftingGUIService;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor; // Added import
 import org.bukkit.Material;
+import org.bukkit.Sound; // Added import
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,16 +21,17 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap; // Added import
 import java.util.Objects;
 
 public class CraftingGUIListener implements Listener {
 
     private final CraftingGUIService craftingService;
-    private final MMOCraft plugin; // For BukkitScheduler via core.getPlugin() or directly if passed
+    // private final MMOCraft plugin; // Removed field
 
-    public CraftingGUIListener(CraftingGUIService craftingService, MMOCraft plugin) {
+    public CraftingGUIListener(CraftingGUIService craftingService) { // Removed plugin parameter
         this.craftingService = Objects.requireNonNull(craftingService, "CraftingService cannot be null.");
-        this.plugin = Objects.requireNonNull(plugin, "Plugin instance cannot be null.");
+        // this.plugin = Objects.requireNonNull(plugin, "Plugin instance cannot be null."); // Removed assignment
     }
 
     @EventHandler(priority = EventPriority.HIGH) // High to override vanilla table behavior if needed
@@ -70,7 +72,7 @@ public class CraftingGUIListener implements Listener {
                         (cursorItem.isSimilar(resultItem) && cursorItem.getAmount() + resultItem.getAmount() <= resultItem.getMaxStackSize())) {
                     craftingService.attemptCraft(topInventory, player, event.getClick().isShiftClick());
                 } else {
-                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_DISPENSER_FAIL, 1f, 1f);
+                    player.playSound(player.getLocation(), Sound.BLOCK_DISPENSER_FAIL, 1f, 1f); // Sound import added
                 }
             }
             return; // Result slot interaction handled
@@ -151,10 +153,10 @@ public class CraftingGUIListener implements Listener {
             ItemStack item = topInventory.getItem(slotIndex);
             if (item != null && !item.getType().isAir()) {
                 // Add item back to player's inventory, drop if full
-                HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(item.clone()); // Clone it
+                HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(item.clone()); // HashMap import added
                 if (!leftovers.isEmpty()) {
                     leftovers.values().forEach(leftover -> player.getWorld().dropItemNaturally(player.getLocation(), leftover));
-                    if(!itemsReturned) player.sendMessage(Component.text("Items from crafter returned to your inventory (or dropped if full).", NamedTextColor.YELLOW));
+                    if(!itemsReturned) player.sendMessage(Component.text("Items from crafter returned to your inventory (or dropped if full).", NamedTextColor.YELLOW)); // NamedTextColor import added
                 }
                 itemsReturned = true;
                 topInventory.setItem(slotIndex, null); // Clear the slot in the GUI

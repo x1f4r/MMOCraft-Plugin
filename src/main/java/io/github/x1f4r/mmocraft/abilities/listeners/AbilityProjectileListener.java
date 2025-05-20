@@ -7,10 +7,12 @@ import io.github.x1f4r.mmocraft.services.NBTService;
 import io.github.x1f4r.mmocraft.services.VisualFeedbackService; // To show damage indicators from projectile
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey; // Added import
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity; // Added import
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -24,7 +26,10 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull; // Added import
+import org.jetbrains.annotations.Nullable; // Added import
 
+import java.util.Locale; // Added import
 import java.util.Objects;
 
 public class AbilityProjectileListener implements Listener {
@@ -76,7 +81,7 @@ public class AbilityProjectileListener implements Listener {
 
         // Default impact visuals (can be customized per ability type if projectile stores its visual effect type)
         world.spawnParticle(Particle.SNOWFLAKE, hitLocation, 30, 0.5, 0.5, 0.5, 0.1);
-        world.spawnParticle(Particle.ITEM_CRACK, hitLocation, 20, 0.3, 0.3, 0.3, 0.05, new ItemStack(Material.ICE));
+        world.spawnParticle(Particle.ITEM_CRACK, hitLocation, 20, 0.3, 0.3, 0.3, 0.05, new ItemStack(Material.ICE)); // Prefixed with Particle
         world.playSound(hitLocation, Sound.BLOCK_GLASS_BREAK, 1.0f, 1.2f);
 
         LivingEntity directHitEntity = null;
@@ -91,10 +96,10 @@ public class AbilityProjectileListener implements Listener {
 
         if (isAoe) {
             if (logging.isDebugMode()) logging.debug("Ability projectile AOE triggered. Radius: " + aoeRadius + ", AoE Damage: " + aoeDamage);
-            world.spawnParticle(Particle.EXPLOSION_NORMAL, hitLocation, 10, aoeRadius * 0.5, aoeRadius * 0.5, aoeRadius * 0.5, 0.05); // Smaller explosion for AoE
+            world.spawnParticle(Particle.EXPLOSION_NORMAL, hitLocation, 10, aoeRadius * 0.5, aoeRadius * 0.5, aoeRadius * 0.5, 0.05); // Prefixed with Particle
             world.playSound(hitLocation, Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 1.5f);
 
-            for (Entity nearby : world.getNearbyEntities(hitLocation, aoeRadius, aoeRadius, aoeRadius)) {
+            for (Entity nearby : world.getNearbyEntities(hitLocation, aoeRadius, aoeRadius, aoeRadius)) { // Type Entity is now imported
                 if (nearby instanceof LivingEntity nearbyLiving && !nearby.equals(shooter) && !nearby.equals(directHitEntity) && !(nearby instanceof ArmorStand)) {
                     // Basic line of sight check from explosion center to target's eye location
                     // This is a simple check; more complex cover checks might be needed for balance.
@@ -132,7 +137,8 @@ public class AbilityProjectileListener implements Listener {
         }
 
         if (effectType != null && !effectType.isEmpty() && duration > 0) {
-            PotionEffectType bukkitEffectType = PotionEffectType.getByName(effectType.toUpperCase());
+            // Deprecated PotionEffectType.getByName replaced
+            PotionEffectType bukkitEffectType = PotionEffectType.getByKey(NamespacedKey.minecraft(effectType.toLowerCase(Locale.ROOT)));
             if (bukkitEffectType != null) {
                 // Override existing lower-amplifier effects of the same type, or extend duration if amplifier is same/higher
                 boolean applyEffect = true;
@@ -147,7 +153,8 @@ public class AbilityProjectileListener implements Listener {
                 if(applyEffect) {
                     target.addPotionEffect(new PotionEffect(bukkitEffectType, duration, amplifier, true, true, true)); // Ambient, Particles, Icon
                     if (logging.isDebugMode()) {
-                        logging.debug("Applied potion effect " + bukkitEffectType.getName() + " (Dur: " + duration + "t, Amp: " + amplifier + ") to " + target.getName());
+                        // Deprecated PotionEffectType.getName() replaced
+                        logging.debug("Applied potion effect " + bukkitEffectType.getKey().getKey() + " (Dur: " + duration + "t, Amp: " + amplifier + ") to " + target.getName());
                     }
                 }
             } else {

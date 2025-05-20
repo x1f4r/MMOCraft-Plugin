@@ -30,7 +30,7 @@ public class CombatService implements Service {
 
     private final Random random = new Random();
     // Define which environmental damage types might be reduced by defense
-    private final Set<EntityDamageEvent.DamageCause> defendableEnvironmentalCauses = EnumSet.of(
+    private final Set<EntityDamageEvent.DamageCause> defendableEnvironmentalCauses = EnumSet.noneOf(EntityDamageEvent.DamageCause.class);
             // EntityDamageEvent.DamageCause.CONTACT, // Example: Cactus, Berry Bush
             // EntityDamageEvent.DamageCause.ENTITY_EXPLOSION, // If defense should reduce TNT/Creeper AoE
             // EntityDamageEvent.DamageCause.FIRE,
@@ -162,7 +162,7 @@ public class CombatService implements Service {
 
         // --- Victim's Defense ---
         if (!isTrueDamage) {
-            int victimDefense = (victimPlayerStats != null) ? victimPlayerStats.defense() : (victimEntityStats != null ? victimEntityStats.getDefense() : 0);
+            int victimDefense = (victimPlayerStats != null) ? victimPlayerStats.defense() : (victimEntityStats != null ? victimEntityStats.defense() : 0);
             if (victimDefense > 0) {
                 double defenseReductionFactor = 100.0 / (100.0 + victimDefense);
                 calculatedDamage *= defenseReductionFactor;
@@ -202,7 +202,7 @@ public class CombatService implements Service {
         if (defendableEnvironmentalCauses.contains(cause)) {
             CalculatedPlayerStats victimPlayerStats = (victim instanceof Player p) ? playerStatsService.getCalculatedStats(p) : null;
             EntityStats victimEntityStats = (victim instanceof Player) ? null : entityStatsService.getEntityStats(victim);
-            int victimDefense = (victimPlayerStats != null) ? victimPlayerStats.defense() : (victimEntityStats != null ? victimEntityStats.getDefense() : 0);
+            int victimDefense = (victimPlayerStats != null) ? victimPlayerStats.defense() : (victimEntityStats != null ? victimEntityStats.defense() : 0);
 
             if (victimDefense > 0) {
                 double defenseReductionFactor = 100.0 / (100.0 + victimDefense);

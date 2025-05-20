@@ -3,6 +3,7 @@ package io.github.x1f4r.mmocraft.abilities;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.items.CustomItem;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.entity.Player;
@@ -42,7 +43,7 @@ public abstract class AbstractItemAbility implements ItemAbility {
         // Subclasses should override this to provide meaningful descriptions,
         // potentially using itemTemplate.getGenericNbtValue() for dynamic parts.
         return Collections.singletonList(
-                Component.text("A mystical ability of " + displayName.content() + ".", NamedTextColor.GRAY)
+                Component.text("A mystical ability of " + PlainTextComponentSerializer.plainText().serialize(displayName) + ".", NamedTextColor.GRAY)
                         .decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE)
         );
     }
