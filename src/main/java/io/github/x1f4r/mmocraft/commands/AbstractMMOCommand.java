@@ -24,7 +24,7 @@ public abstract class AbstractMMOCommand implements CommandExecutor, TabComplete
     protected final MMOCore core;
     protected final LoggingService logging;
     private final String commandLabel; // The main command string (e.g., "mmocadmin")
-    private final String requiredBasePermission; // Optional permission for the base command itself
+    final String requiredBasePermission; // Optional permission for the base command itself (changed to package-private)
     protected final Map<String, SubCommand> subCommands = new LinkedHashMap<>(); // Preserve insertion order for help
 
     /**
@@ -193,7 +193,7 @@ public abstract class AbstractMMOCommand implements CommandExecutor, TabComplete
     }
 
     // --- Argument Parsing Utilities ---
-    protected PlayerparsePlayer(@NotNull CommandSender sender, String playerName, String argName) throws CommandArgumentException {
+    protected Player parsePlayer(@NotNull CommandSender sender, String playerName, String argName) throws CommandArgumentException {
         Player target = Bukkit.getPlayerExact(playerName);
         if (target == null) {
             throw new CommandArgumentException("Player '" + playerName + "' not found for argument '" + argName + "'.");

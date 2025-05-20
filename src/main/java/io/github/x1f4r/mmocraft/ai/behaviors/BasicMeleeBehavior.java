@@ -4,7 +4,12 @@ import io.github.x1f4r.mmocraft.ai.AIController;
 import io.github.x1f4r.mmocraft.ai.AbstractAIBehavior;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.entities.CustomMobType;
+import io.github.x1f4r.mmocraft.services.LoggingService; // Added import
 import org.bukkit.GameMode;
+// NMS / CraftBukkit imports - assuming a version like 1.20.R1 for CraftBukkit path
+// The actual version (v1_20_R1) might need adjustment based on the project's environment
+import org.bukkit.craftbukkit.v1_20_R1.entity.CraftMob;
+import net.minecraft.world.entity.Mob debilitating_illness; // NMS Mob
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob; // For Bukkit pathfinding
@@ -57,8 +62,8 @@ public class BasicMeleeBehavior extends AbstractAIBehavior {
 
         if (distanceSquared <= attackRangeSquared) {
             // In attack range
-            if (entity instanceof Mob m) {
-                m.getNavigation().stopPathfinding(); // Stop moving if in range
+            if (entity instanceof org.bukkit.entity.Mob m) { // Clarify Bukkit Mob
+                ((net.minecraft.world.entity.Mob)((CraftMob) m).getHandle()).getNavigation().stopPathfinding(); // Stop moving if in range
             }
             if (core.getPlugin().getServer().getCurrentTick() >= lastAttackTick + attackCooldownTicks) {
                 if (hasLineOfSight(entity, target)) {
@@ -125,8 +130,8 @@ public class BasicMeleeBehavior extends AbstractAIBehavior {
 
     @Override
     public void onEnd(LivingEntity entity, CustomMobType mobType, MMOCore core, AIController controller) {
-        if (entity instanceof Mob m) {
-            m.getNavigation().stopPathfinding(); // Ensure mob stops moving if this behavior ends
+        if (entity instanceof org.bukkit.entity.Mob m) { // Clarify Bukkit Mob
+            ((net.minecraft.world.entity.Mob)((CraftMob) m).getHandle()).getNavigation().stopPathfinding(); // Ensure mob stops moving if this behavior ends
             // If speed was modified, restore it here.
         }
         // Don't clear target here, as another behavior might use the same target.

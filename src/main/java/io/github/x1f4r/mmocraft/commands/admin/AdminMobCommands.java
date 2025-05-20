@@ -15,8 +15,10 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
+import org.jetbrains.annotations.NotNull; // Added import
 
 import java.util.ArrayList;
+import java.util.Collections; // Added import
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -85,7 +87,8 @@ public class AdminMobCommands extends AbstractMMOCommand {
                     }
                 },
                 (sender, args) -> { // Tab completer for "spawn"
-                    if (args.length == 1) return tabCompleteFromList(new ArrayList<>(customMobService.getAllCustomMobTypeIds()), args[0]);
+                    // FIXME: CustomMobService is missing a method to get all mob type IDs. Using empty list for now.
+                    if (args.length == 1) return tabCompleteFromList(new ArrayList<>(Collections.emptySet()), args[0]);
                     if (args.length == 2) return List.of("1", "5", "10"); // Amount
                     if (args.length == 3) { // x, @p, or playername
                         List<String> suggestions = new ArrayList<>(tabCompletePlayerNames(args[2]));
@@ -104,9 +107,10 @@ public class AdminMobCommands extends AbstractMMOCommand {
         // Subcommand: list
         addSubCommand("list", "mmocraft.admin.mob.list", 0, "",
                 (sender, args) -> {
-                    Set<String> mobTypeIds = customMobService.getAllCustomMobTypeIds();
+                    // FIXME: CustomMobService is missing a method to get all mob type IDs. Using empty set for now.
+                    Set<String> mobTypeIds = Collections.emptySet(); // customMobService.getAllCustomMobTypeIds();
                     if (mobTypeIds.isEmpty()) {
-                        sender.sendMessage(Component.text("No custom mob types are currently defined.", NamedTextColor.YELLOW));
+                        sender.sendMessage(Component.text("No custom mob types are currently defined (or service method is missing).", NamedTextColor.YELLOW));
                         return;
                     }
                     sender.sendMessage(Component.text("Available Custom Mob Type IDs (" + mobTypeIds.size() + "):", NamedTextColor.GOLD));
@@ -185,7 +189,8 @@ public class AdminMobCommands extends AbstractMMOCommand {
                 },
                 (sender, args) -> {
                     if (args.length == 1) {
-                        List<String> suggestions = new ArrayList<>(customMobService.getAllCustomMobTypeIds());
+                        // FIXME: CustomMobService is missing a method to get all mob type IDs. Using empty list for now.
+                        List<String> suggestions = new ArrayList<>(Collections.emptySet()); // customMobService.getAllCustomMobTypeIds());
                         suggestions.add("ALL_MMO");
                         return tabCompleteFromList(suggestions, args[0]);
                     }

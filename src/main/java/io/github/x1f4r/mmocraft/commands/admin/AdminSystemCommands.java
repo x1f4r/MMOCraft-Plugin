@@ -7,6 +7,7 @@ import io.github.x1f4r.mmocraft.services.LoggingService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
+import org.jetbrains.annotations.NotNull; // Added import
 
 import java.util.ArrayList;
 import java.util.List;

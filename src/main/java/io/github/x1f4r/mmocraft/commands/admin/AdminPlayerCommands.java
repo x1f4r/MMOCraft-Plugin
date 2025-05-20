@@ -9,15 +9,19 @@ import io.github.x1f4r.mmocraft.services.PlayerResourceService;
 import io.github.x1f4r.mmocraft.services.PlayerStatsService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.attribute.Attribute; // Added import
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull; // Added import
 
 import java.lang.reflect.Field; // For stat name iteration (advanced, optional)
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap; // Added import
 import java.util.List;
 import java.util.Locale;
+import java.util.Map; // Added import
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

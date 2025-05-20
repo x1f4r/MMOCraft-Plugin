@@ -297,7 +297,7 @@ public class ConfigService implements Service {
     // These are examples; specific services might access their own configs directly
     // or you can add more generic typed getters for any config file.
 
-    public StringgetMainConfigString(String path, String def) {
+    public String getMainConfigString(String path, String def) {
         return getMainConfig().getString(path, def);
     }
     public int getMainConfigInt(String path, int def) {

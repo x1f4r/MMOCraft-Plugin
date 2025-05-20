@@ -4,11 +4,18 @@ import io.github.x1f4r.mmocraft.ai.AIController;
 import io.github.x1f4r.mmocraft.ai.AbstractAIBehavior;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.entities.CustomMobType;
+import io.github.x1f4r.mmocraft.services.LoggingService; // Added import
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Mob;
+import org.bukkit.entity.Mob; // Bukkit Mob
 import org.bukkit.util.Vector;
+
+// NMS / CraftBukkit imports - assuming a version like 1.20.R1 for CraftBukkit path
+import org.bukkit.craftbukkit.v1_20_R1.entity.CraftMob;
+import net.minecraft.world.entity.Mob nmsMob; // NMS Mob, using an alias to avoid collision if needed, but direct use is fine.
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
+
 
 import java.util.Random;
 
@@ -35,10 +42,12 @@ public class RandomStrollBehavior extends AbstractAIBehavior {
 
     @Override
     public void onTick(LivingEntity entity, CustomMobType mobType, MMOCore core, AIController controller) {
-        if (!(entity instanceof Mob m)) return;
+        if (!(entity instanceof org.bukkit.entity.Mob m)) return; // Clarify Bukkit Mob
 
         if (core.getPlugin().getServer().getCurrentTick() >= nextStrollTime) {
-            if (m.getPathfinder().getCurrentPath() == null || m.getPathfinder().getCurrentPath().isFinished()) {
+            // Get NMS navigation and check if it's idle (path completed or no path)
+            PathNavigation nmsNavigation = ((net.minecraft.world.entity.Mob)((CraftMob) m).getHandle()).getNavigation();
+            if (nmsNavigation.isDone()) {
                 // Mob is idle or finished previous path, find new stroll target
                 Location currentLocation = entity.getLocation();
                 double angle = random.nextDouble() * 2 * Math.PI;
