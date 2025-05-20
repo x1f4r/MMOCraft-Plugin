@@ -40,8 +40,7 @@ public class EntityStatsService implements Service {
         this.core = core;
     }
 
-    @Override
-    public void initialize(MMOCore core) {
+    public void initialize(MMOCore core) { // Removed @Override
         this.logging = core.getService(LoggingService.class);
         this.configService = core.getService(ConfigService.class);
         this.nbtService = core.getService(NBTService.class); // Static keys via NBTService.KEY
@@ -73,120 +72,13 @@ public class EntityStatsService implements Service {
     }
 
     // Modify applyStatsToEntity:
-    @Override
-    public void applyStatsToEntity(LivingEntity entity) {
-        if (entity instanceof Player || entity instanceof ArmorStand || !entity.isValid() || entity.isDead()) {
-            return;
-        }
-        if (activeEntityStatsCache.containsKey(entity.getUniqueId())) {
-            return; // Already processed
-        }
-
-        EntityStats statsToApply = null;
-        CustomMobType customType = null;
-
-        // Check NBT for CUSTOM_MOB_TYPE_ID_KEY first
-        String customMobId = NBTService.get(entity.getPersistentDataContainer(), NBTService.CUSTOM_MOB_TYPE_ID_KEY, PersistentDataType.STRING, null);
-
-        if (customMobId != null) {
-            if (this.customMobService == null) { // Safety check if CustomMobService wasn't ready during init
-                try { this.customMobService = core.getService(CustomMobService.class); }
-                catch (IllegalStateException e) { logging.warn("CustomMobService still not available when trying to apply stats for existing custom mob NBT."); }
-            }
-            if (this.customMobService != null) {
-                customType = customMobService.getCustomMobType(customMobId);
-                if (customType != null) {
-                    statsToApply = customType.stats(); // Use stats defined in CustomMobType
-                    if (logging.isDebugMode()) logging.debug("Applying stats from CustomMobType '" + customMobId + "' to " + entity.getType() + " (" + entity.getUniqueId() + ")");
-                } else {
-                    logging.warn("Entity " + entity.getUniqueId() + " has custom_mob_type_id NBT '" + customMobId +
-                            "' but no matching CustomMobType found in CustomMobService registry. Will check vanilla overrides.");
-                }
-            }
-        }
-
-        // Fallback to vanilla overrides if not a known custom mob type with stats, or if customType.stats() was null
-        if (statsToApply == null) {
-            statsToApply = vanillaMobTypeStatOverrides.get(entity.getType());
-            if (statsToApply != null && logging.isDebugMode()) {
-                logging.debug("Applying vanilla override stats to " + entity.getType() + " (" + entity.getUniqueId() + ")");
-            }
-        }
-
-        if (statsToApply == null) {
-            activeEntityStatsCache.put(entity.getUniqueId(), EntityStats.createDefault(entity));
-            // Don't apply Bukkit attributes if no specific stats found, let it be vanilla.
-            // Health bar might still be created with vanilla stats.
-            VisualFeedbackService vfs = core.getService(VisualFeedbackService.class);
-            if (vfs != null) vfs.updateHealthBar(entity);
-            return;
-        }
-
-        storeOriginalAttributes(entity); // Store before modifying
-
-        AttributeInstance healthInstance = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-        if (healthInstance != null) {
-            healthInstance.setBaseValue(statsToApply.maxHealth());
-            entity.setHealth(statsToApply.maxHealth());
-        }
-
-        AttributeInstance attackInstance = entity.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
-        if (attackInstance != null) {
-            attackInstance.setBaseValue(statsToApply.strength());
-        }
-
-        AttributeInstance speedInstance = entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
-        if (speedInstance != null) {
-            Double originalBaseSpeed = originalBaseValues.getOrDefault(entity.getUniqueId(), Collections.emptyMap())
-                    .get(Attribute.GENERIC_MOVEMENT_SPEED);
-            if (originalBaseSpeed == null) originalBaseSpeed = speedInstance.getDefaultValue();
-            double newBaseSpeed = originalBaseSpeed * (1.0 + (statsToApply.speedPercent() / 100.0));
-            speedInstance.setBaseValue(Math.max(0.0001, newBaseSpeed));
-        }
-
-        activeEntityStatsCache.put(entity.getUniqueId(), statsToApply);
-
-        VisualFeedbackService vfs = core.getService(VisualFeedbackService.class);
-        if (vfs != null) {
-            vfs.updateHealthBar(entity);
-        }
-    }
+    // Removed first duplicate of applyStatsToEntity
 
     // Modify getEntityStats:
-    @Override
-    public EntityStats getEntityStats(LivingEntity entity) {
-        if (entity instanceof Player || entity instanceof ArmorStand) return EntityStats.createZeroed();
-
-        EntityStats cachedStats = activeEntityStatsCache.get(entity.getUniqueId());
-        if (cachedStats != null) return cachedStats;
-
-        EntityStats intendedStats = null;
-        String customMobId = NBTService.get(entity.getPersistentDataContainer(), NBTService.CUSTOM_MOB_TYPE_ID_KEY, PersistentDataType.STRING, null);
-
-        if (customMobId != null) {
-            if (this.customMobService == null) { // Safety check
-                try { this.customMobService = core.getService(CustomMobService.class); }
-                catch (IllegalStateException ignored) {}
-            }
-            if (this.customMobService != null) {
-                CustomMobType customType = customMobService.getCustomMobType(customMobId);
-                if (customType != null && customType.stats() != null) {
-                    intendedStats = customType.stats();
-                    // No need to log here if cache miss, could be frequent for entities without persistent stat changes
-                }
-            }
-        }
-
-        if (intendedStats == null) {
-            intendedStats = vanillaMobTypeStatOverrides.get(entity.getType());
-        }
-
-        return (intendedStats != null) ? intendedStats : EntityStats.createDefault(entity);
-    }
+    // Removed first duplicate of getEntityStats
 
 
-    @Override
-    public void shutdown() {
+    public void shutdown() { // Removed @Override
         // Attempt to restore original Bukkit attributes for any remaining managed entities
         new ArrayList<>(activeEntityStatsCache.keySet()).forEach(uuid -> {
             // Bukkit.getEntity() might be slow if called many times, but necessary here.

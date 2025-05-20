@@ -11,9 +11,9 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob; // Bukkit Mob
 import org.bukkit.util.Vector;
 
-// NMS / CraftBukkit imports - assuming a version like 1.20.R1 for CraftBukkit path
-import org.bukkit.craftbukkit.v1_20_R1.entity.CraftMob;
-import net.minecraft.world.entity.Mob nmsMob; // NMS Mob, using an alias to avoid collision if needed, but direct use is fine.
+// NMS / CraftBukkit imports - aligning with Purpur API 1.21.5
+import org.bukkit.craftbukkit.v1_21_R1.entity.CraftMob; // Updated version
+import net.minecraft.world.entity.Mob; // NMS Mob - import is fine
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 
 

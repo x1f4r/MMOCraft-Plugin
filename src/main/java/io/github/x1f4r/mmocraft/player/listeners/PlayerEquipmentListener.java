@@ -45,7 +45,7 @@ public class PlayerEquipmentListener implements Listener {
     public void onPlayerArmorChange(PlayerArmorChangeEvent event) {
         // This is a very reliable event for armor changes from any source.
         triggerUpdate(event.getPlayer(), "PlayerArmorChangeEvent",
-                "Slot: " + event.getSlotType() + ", Old: " + (event.getOldItem() != null ? event.getOldItem().getType() : "EMPTY") +
+                "Slot: " + event.getSlot() + ", Old: " + (event.getOldItem() != null ? event.getOldItem().getType() : "EMPTY") + // Changed getSlotType() to getSlot()
                         ", New: " + (event.getNewItem() != null ? event.getNewItem().getType() : "EMPTY"));
     }
 
@@ -100,8 +100,8 @@ public class PlayerEquipmentListener implements Listener {
             mightAffectEquipment = true;
         }
 
-        // 3. Number key (HOTBAR_SWAP, HOTBAR_MOVE_AND_READD)
-        if (event.getAction() == InventoryAction.HOTBAR_SWAP || event.getAction() == InventoryAction.HOTBAR_MOVE_AND_READD) {
+        // 3. Number key (HOTBAR_SWAP) - HOTBAR_MOVE_AND_READD was deprecated and removed
+        if (event.getAction() == InventoryAction.HOTBAR_SWAP) { // Removed HOTBAR_MOVE_AND_READD
             mightAffectEquipment = true;
         }
 
@@ -158,7 +158,7 @@ public class PlayerEquipmentListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         // For environment-dependent stats (e.g., Ender Armor in The End).
-        triggerUpdate(event.getPlayer(), "PlayerChangedWorldEvent", "To: " + event.getTo().getName());
+        triggerUpdate(event.getPlayer(), "PlayerChangedWorldEvent", "To: " + event.getPlayer().getWorld().getName()); // Changed event.getTo()
     }
 
     // A general catch-all on inventory close for any complex manipulations

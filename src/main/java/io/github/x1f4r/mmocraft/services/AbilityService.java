@@ -9,6 +9,8 @@ import io.github.x1f4r.mmocraft.core.Service;
 import io.github.x1f4r.mmocraft.items.CustomItem;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer; // Added import
+import org.bukkit.Sound; // Added import
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
 import org.bukkit.inventory.EquipmentSlot;
@@ -170,7 +172,7 @@ public class AbilityService implements Service {
         int fixedCooldownTicks = getActualCooldownTicks(customItemTemplate, ability);
         if (fixedCooldownTicks > 0 && isOnCooldown(ability.getAbilityId(), player.getUniqueId(), fixedCooldownTicks)) {
             long remainingMillis = getRemainingCooldownMillis(ability.getAbilityId(), player.getUniqueId(), fixedCooldownTicks);
-            player.sendActionBar(Component.text(ability.getDisplayName().content() + " on cooldown! (" +
+            player.sendActionBar(Component.text(PlainTextComponentSerializer.plainText().serialize(ability.getDisplayName()) + " on cooldown! (" +
                     String.format("%.1f", remainingMillis / 1000.0) + "s)", NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 0.7f, 0.7f);
             return true; // Ability was processed (cooldown message sent)
@@ -178,7 +180,7 @@ public class AbilityService implements Service {
 
         int manaCost = getActualManaCost(customItemTemplate, ability);
         if (manaCost > 0 && !playerResourceService.consumeMana(player, manaCost)) { // consumeMana now updates action bar
-            player.sendActionBar(Component.text("Not enough mana for " + ability.getDisplayName().content() + "! Need " + manaCost + ", have " + playerResourceService.getCurrentMana(player) + ".", NamedTextColor.BLUE));
+            player.sendActionBar(Component.text("Not enough mana for " + PlainTextComponentSerializer.plainText().serialize(ability.getDisplayName()) + "! Need " + manaCost + ", have " + playerResourceService.getCurrentMana(player) + ".", NamedTextColor.BLUE));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0f, 0.8f);
             return true; // Ability was processed (mana message sent)
         }
@@ -195,7 +197,7 @@ public class AbilityService implements Service {
             executionSuccess = ability.execute(player, itemStack, customItemTemplate, core);
         } catch (Exception e) {
             logging.severe("Error executing ability '" + ability.getAbilityId() + "' for player " + player.getName(), e);
-            player.sendMessage(Component.text("An error occurred while using " + ability.getDisplayName().content() + ".", NamedTextColor.RED));
+            player.sendMessage(Component.text("An error occurred while using " + PlainTextComponentSerializer.plainText().serialize(ability.getDisplayName()) + ".", NamedTextColor.RED));
             executionSuccess = false; // Ensure it's marked as failed
         }
 

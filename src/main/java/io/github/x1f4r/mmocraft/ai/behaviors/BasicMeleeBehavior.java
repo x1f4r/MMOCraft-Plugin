@@ -6,10 +6,9 @@ import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.entities.CustomMobType;
 import io.github.x1f4r.mmocraft.services.LoggingService; // Added import
 import org.bukkit.GameMode;
-// NMS / CraftBukkit imports - assuming a version like 1.20.R1 for CraftBukkit path
-// The actual version (v1_20_R1) might need adjustment based on the project's environment
-import org.bukkit.craftbukkit.v1_20_R1.entity.CraftMob;
-import net.minecraft.world.entity.Mob debilitating_illness; // NMS Mob
+// NMS / CraftBukkit imports - aligning with Purpur API 1.21.5
+import org.bukkit.craftbukkit.v1_21_R1.entity.CraftMob; // Updated version
+import net.minecraft.world.entity.Mob; // NMS Mob - import is fine
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob; // For Bukkit pathfinding

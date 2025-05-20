@@ -48,9 +48,9 @@ public class CraftingGUIService implements Service {
     public static final int RESULT_SLOT = 25;  // Row 3, to the right of the grid (slot 25)
     public static final int ARROW_SLOT = 24;   // Slot between input grid and result (slot 24)
 
-    private static final ItemStack FILLER_PANE;
-    private static final ItemStack ARROW_ITEM_DISPLAY;
-    private static final ItemStack BARRIER_ITEM_NO_RECIPE;
+    public static final ItemStack FILLER_PANE; // Changed to public
+    public static final ItemStack ARROW_ITEM_DISPLAY; // Changed to public
+    public static final ItemStack BARRIER_ITEM_NO_RECIPE; // Changed to public
 
     private boolean overrideVanillaCraftingTable;
 
@@ -82,7 +82,7 @@ public class CraftingGUIService implements Service {
 
         overrideVanillaCraftingTable = configService.getMainConfigBoolean("crafting.override_vanilla_table", true);
 
-        core.registerListener(new CraftingGUIListener(this, core.getPlugin()));
+        core.registerListener(new CraftingGUIListener(this)); // Removed plugin from constructor
         logging.info(getServiceName() + " initialized. Vanilla crafting table override: " + overrideVanillaCraftingTable);
     }
 

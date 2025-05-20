@@ -146,13 +146,20 @@ public class MMOCore {
         java.util.Collections.reverse(reversedServices);
 
         for (Service service : reversedServices) {
-            // If internalLogger is the one being shut down, or if it's null, use plugin's raw logger
-            Logger loggerToUse = (service == this.internalLogger || internalLogger == null) ? MMOCraft.getPluginLogger() : internalLogger;
             try {
-                loggerToUse.info("Shutting down service: " + service.getServiceName());
+                // If internalLogger is the one being shut down, or if it's null, use plugin's raw logger
+                if (service == this.internalLogger || internalLogger == null) {
+                    MMOCraft.getPluginLogger().info("Shutting down service: " + service.getServiceName());
+                } else {
+                    this.internalLogger.info("Shutting down service: " + service.getServiceName());
+                }
                 service.shutdown();
             } catch (Exception e) {
-                loggerToUse.log(Level.SEVERE, "Error shutting down service: " + service.getServiceName(), e);
+                if (service == this.internalLogger || internalLogger == null) {
+                    MMOCraft.getPluginLogger().log(Level.SEVERE, "Error shutting down service: " + service.getServiceName(), e);
+                } else {
+                    this.internalLogger.severe("Error shutting down service: " + service.getServiceName(), e);
+                }
             }
         }
         services.clear();
@@ -170,16 +177,23 @@ public class MMOCore {
      * @param registrationClass The class (usually an interface or the service's own class) to use as the key for retrieving this service.
      */
     public void registerService(Service service, Class<? extends Service> registrationClass) {
-        // Use internalLogger if available, otherwise the raw plugin logger for registration messages.
-        Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
-
         if (services.containsKey(registrationClass)) {
-            logger.warning("Service already registered for key: " + registrationClass.getName() +
+            String warningMsg = "Service already registered for key: " + registrationClass.getName() +
                     ". Overwriting. Ensure this is intended. Old: " + services.get(registrationClass).getClass().getName() +
-                    ", New: " + service.getClass().getName());
+                    ", New: " + service.getClass().getName();
+            if (this.internalLogger != null) {
+                this.internalLogger.warn(warningMsg);
+            } else {
+                MMOCraft.getPluginLogger().warning(warningMsg);
+            }
         }
         services.put(registrationClass, service);
-        logger.info("Registered service: " + service.getServiceName() + " under key " + registrationClass.getSimpleName());
+        String infoMsg = "Registered service: " + service.getServiceName() + " under key " + registrationClass.getSimpleName();
+        if (this.internalLogger != null) {
+            this.internalLogger.info(infoMsg);
+        } else {
+            MMOCraft.getPluginLogger().info(infoMsg);
+        }
     }
 
     /**
@@ -203,9 +217,11 @@ public class MMOCore {
         if (service == null) {
             String message = "Service not found: " + serviceClass.getName() +
                     ". Ensure it is registered and initialized before access, and check registration order.";
-            // Use internalLogger if available, otherwise the raw plugin logger for this critical error.
-            Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
-            logger.severe(message);
+            if (this.internalLogger != null) {
+                this.internalLogger.severe(message);
+            } else {
+                MMOCraft.getPluginLogger().severe(message);
+            }
             throw new IllegalStateException(message);
         }
         try {
@@ -213,8 +229,11 @@ public class MMOCore {
         } catch (ClassCastException e) {
             String message = "Service type mismatch for: " + serviceClass.getName() +
                     ". Registered as " + service.getClass().getName() + ".";
-            Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
-            logger.severe(message);
+            if (this.internalLogger != null) {
+                this.internalLogger.severe(message);
+            } else {
+                MMOCraft.getPluginLogger().severe(message);
+            }
             throw new IllegalStateException(message, e);
         }
     }
@@ -226,22 +245,34 @@ public class MMOCore {
     // --- Convenience methods for services to register listeners/commands via MMOCore ---
     public void registerListener(Listener listener) {
         plugin.getServer().getPluginManager().registerEvents(listener, plugin);
-        // Logging this action is good, use internalLogger if available.
-        Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
-        logger.fine("Registered listener: " + listener.getClass().getSimpleName());
+        String listenerName = listener.getClass().getSimpleName();
+        if (this.internalLogger != null) {
+            this.internalLogger.debug("Registered listener: " + listenerName); // Using debug as per instructions
+        } else {
+            MMOCraft.getPluginLogger().fine("Registered listener: " + listenerName);
+        }
     }
 
     public void registerCommand(String commandNameInPluginYml, CommandExecutor executor, @javax.annotation.Nullable TabCompleter tabCompleter) {
         PluginCommand command = plugin.getCommand(commandNameInPluginYml);
-        Logger logger = (this.internalLogger != null) ? this.internalLogger : MMOCraft.getPluginLogger();
         if (command != null) {
             command.setExecutor(executor);
             if (tabCompleter != null) {
                 command.setTabCompleter(tabCompleter);
             }
-            logger.info("Registered command handler for /" + commandNameInPluginYml);
+            String infoMsg = "Registered command handler for /" + commandNameInPluginYml;
+            if (this.internalLogger != null) {
+                this.internalLogger.info(infoMsg);
+            } else {
+                MMOCraft.getPluginLogger().info(infoMsg);
+            }
         } else {
-            logger.warning("Command '/" + commandNameInPluginYml + "' not found in plugin.yml! Cannot register handler.");
+            String warningMsg = "Command '/" + commandNameInPluginYml + "' not found in plugin.yml! Cannot register handler.";
+            if (this.internalLogger != null) {
+                this.internalLogger.warn(warningMsg);
+            } else {
+                MMOCraft.getPluginLogger().warning(warningMsg);
+            }
         }
     }
 }

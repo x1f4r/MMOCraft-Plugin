@@ -1,5 +1,6 @@
 package io.github.x1f4r.mmocraft.recipes;
 
+import io.github.x1f4r.mmocraft.MMOCraft; // Added import
 import io.github.x1f4r.mmocraft.items.RequiredIngredient;
 import io.github.x1f4r.mmocraft.items.RequirementType;
 import io.github.x1f4r.mmocraft.services.ItemService;
