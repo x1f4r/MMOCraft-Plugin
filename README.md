@@ -141,7 +141,7 @@ The plugin creates default configuration files on first run:
 
 1. **Clone Repository**:
    ```bash
-   git clone https://github.com/your-repo/MMOCraft-Plugin.git
+   git clone https://github.com/x1f4r/MMOCraft-Plugin.git
    cd MMOCraft-Plugin
    ```
 
