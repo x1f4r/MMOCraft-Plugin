@@ -32,13 +32,15 @@ import org.bukkit.event.Listener;
 import java.util.ArrayList;
 import java.util.LinkedHashMap; // Preserves insertion order for ordered init/shutdown
 import java.util.List;
-import java.util.Map;
+import java.util.Map;\nimport java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class MMOCore {
     private final MMOCraft plugin;
-    // Use LinkedHashMap to maintain registration order for initialization and shutdown
-    private final Map<Class<? extends Service>, Service> services = new LinkedHashMap<>();
+    // Use ConcurrentHashMap for thread safety. Order maintained by explicit service list.
+    private final Map<Class<? extends Service>, Service> services = new ConcurrentHashMap<>();
+    // Track registration order for proper initialization/shutdown sequence
+    private final List<Class<? extends Service>> serviceOrder = new ArrayList<>();
     private LoggingService internalLogger; // Dedicated logger for MMOCore, initialized first
 
     public MMOCore(MMOCraft plugin) {
@@ -77,44 +79,40 @@ public class MMOCore {
         registerService(new VisualFeedbackService(this), VisualFeedbackService.class);
         // CombatService depends on PlayerStats, EntityStats, and VisualFeedback.
         registerService(new CombatService(this), CombatService.class);
+        // Register services only once, in dependency order
+        // Core services first
+        registerService(new AbilityService(this), AbilityService.class);
         registerService(new ItemService(this), ItemService.class);
-        registerService(new AbilityService(this), AbilityService.class); // Foundational for Part 2, full in Part 5
         registerService(new RecipeService(this), RecipeService.class);
         registerService(new CraftingGUIService(this), CraftingGUIService.class);
         registerService(new ToolProficiencyService(this), ToolProficiencyService.class);
+        
         // PersistenceService depends on LoggingService
         registerService(new PersistenceService(getService(LoggingService.class)), PersistenceService.class);
-        registerService(new ToolProficiencyService(this), ToolProficiencyService.class);
         registerService(new CompactorService(this), CompactorService.class);
-        registerService(new CommandService(this), CommandService.class); // Register CommandService
+        registerService(new CommandService(this), CommandService.class);
 
-        // Player-centric Services (dependencies are resolved via getService within their initialize methods)
-        // Pass 'this' (MMOCore) to service constructors if they need to access multiple other services during init.
+        // Player-centric Services
         registerService(new PlayerDataService(this), PlayerDataService.class);
         registerService(new PlayerStatsService(this), PlayerStatsService.class);
         registerService(new PlayerResourceService(this), PlayerResourceService.class);
         registerService(new PlayerInterfaceService(this), PlayerInterfaceService.class);
-        // AbilityService needs to be ready for ItemService if ItemService generates ability lore at init
-        registerService(new AbilityService(this), AbilityService.class); // ABILITIES FIRST
-        registerService(new ItemService(this), ItemService.class);       // THEN ITEMS
 
-        registerService(new RecipeService(this), RecipeService.class);
-        registerService(new CraftingGUIService(this), CraftingGUIService.class);
-
-// --- Part 3 Services ---
+        // Part 3 Services
         registerService(new EntityStatsService(this), EntityStatsService.class);
         registerService(new VisualFeedbackService(this), VisualFeedbackService.class);
         registerService(new CombatService(this), CombatService.class);
 
-// --- Part 4 Services ---
-        registerService(new ToolProficiencyService(this), ToolProficiencyService.class);
-        registerService(new CompactorService(this), CompactorService.class);
+        // Part 4 Services
+        registerService(new CustomMobService(this), CustomMobService.class);
+        registerService(new MobDropService(this), MobDropService.class);
+        registerService(new NBTService(this), NBTService.class);
 
         // --- Initialize all registered services in the order they were registered ---
-        for (Map.Entry<Class<? extends Service>, Service> entry : services.entrySet()) {
-            Service service = entry.getValue();
+        for (Class<? extends Service> serviceClass : serviceOrder) {
+            Service service = services.get(serviceClass);
             // Skip re-initializing internalLogger if it's the one we set up first for MMOCore logging
-            if (service == this.internalLogger && entry.getKey().equals(LoggingService.class)) {
+            if (service == this.internalLogger && serviceClass.equals(LoggingService.class)) {
                 // internalLogger was already initialized above, so skip its formal init call here.
                 continue;
             }
@@ -141,11 +139,12 @@ public class MMOCore {
             internalLogger.info("MMOCore disabling sequence initiated...");
         }
 
-        // Shutdown in reverse order of registration (LinkedHashMap helps by iterating values)
-        List<Service> reversedServices = new ArrayList<>(services.values());
-        java.util.Collections.reverse(reversedServices);
+        // Shutdown in reverse order of registration
+        List<Class<? extends Service>> reversedOrder = new ArrayList<>(serviceOrder);
+        java.util.Collections.reverse(reversedOrder);
 
-        for (Service service : reversedServices) {
+        for (Class<? extends Service> serviceClass : reversedOrder) {
+            Service service = services.get(serviceClass);
             try {
                 // If internalLogger is the one being shut down, or if it's null, use plugin's raw logger
                 if (service == this.internalLogger || internalLogger == null) {
@@ -187,7 +186,7 @@ public class MMOCore {
                 MMOCraft.getPluginLogger().warning(warningMsg);
             }
         }
-        services.put(registrationClass, service);
+        services.put(registrationClass, service);\n        serviceOrder.add(registrationClass); // Track registration order
         String infoMsg = "Registered service: " + service.getServiceName() + " under key " + registrationClass.getSimpleName();
         if (this.internalLogger != null) {
             this.internalLogger.info(infoMsg);

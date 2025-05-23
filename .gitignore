@@ -40,3 +40,33 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Minecraft Development ###
+# Test servers
+test-server/
+server/
+servers/
+run/
+
+# Server files
+world/
+world_nether/
+world_the_end/
+logs/
+plugins/
+banned-ips.json
+banned-players.json
+ops.json
+whitelist.json
+server.properties
+bukkit.yml
+spigot.yml
+paper.yml
+purpur.yml
+cache/
+
+# Plugin development
+plugin.yml.bak
+config.yml.bak
+*.tmp
+*.temp

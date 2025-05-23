@@ -16,7 +16,7 @@ repositories {
     mavenCentral()
     maven {
         name = 'purpur'
-        url = 'https://repo.purpurmc.org/snapshots' // Or /releases if you prefer specific releases. Snapshots are common for up-to-date APIs. [1, 2, 7]
+        url = 'https://repo.purpurmc.org/releases' // Using releases for stable dependencies
     }
     // You might add other repositories later if needed (e.g., for specific libraries)
     // maven { url = 'https://papermc.io/repo/repository/maven-public/' } // Paper, included by Purpur
@@ -25,9 +25,9 @@ repositories {
 
 dependencies {
     // Purpur API - this includes Paper, Spigot, and Bukkit APIs [1, 2]
-    compileOnly "org.purpurmc.purpur:purpur-api:1.21.5-R0.1-SNAPSHOT" // Check Purpur's website for the latest 1.21.5 version string [2]
+    compileOnly "org.purpurmc.purpur:purpur-api:1.21.5-R0.1" // Using stable release instead of SNAPSHOT
     // Add Purpur server JAR for NMS/CraftBukkit compilation
-    compileOnly "org.purpurmc.purpur:purpur:1.21.5-R0.1-SNAPSHOT"
+    compileOnly "org.purpurmc.purpur:purpur:1.21.5-R0.1" // Using stable release instead of SNAPSHOT
 
     // Adventure API (included with Paper/Purpur, but good to be aware of)
     // compileOnly "net.kyori:adventure-api:4.17.0"

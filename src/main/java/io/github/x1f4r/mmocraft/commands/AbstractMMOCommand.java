@@ -175,8 +175,21 @@ public abstract class AbstractMMOCommand implements TabExecutor {
         if (playerName == null || playerName.isEmpty()) {
             throw new CommandArgumentException(argName + " cannot be empty.", argName);
         }
-        //noinspection deprecation
-        OfflinePlayer target = Bukkit.getOfflinePlayer(playerName); // Deprecated but no good alternative for older versions by name
+        // First try to find online player by exact name match
+        Player onlinePlayer = Bukkit.getPlayerExact(playerName);
+        if (onlinePlayer != null) {
+            return onlinePlayer;
+        }
+        
+        // Try fuzzy matching for online players
+        Player fuzzyMatch = Bukkit.getPlayer(playerName);
+        if (fuzzyMatch != null) {
+            return fuzzyMatch;
+        }
+        
+        // Fallback to deprecated method with proper documentation
+        @SuppressWarnings("deprecation") // Necessary for offline player lookup by name
+        OfflinePlayer target = Bukkit.getOfflinePlayer(playerName);
         if (target == null || (!target.hasPlayedBefore() && !target.isOnline())) { // Ensure player exists
             // A more robust check might involve querying a database if player data is stored off-server
             // For now, if getOfflinePlayer returns a non-null object that hasn't played, it might be a new profile
@@ -193,10 +206,15 @@ public abstract class AbstractMMOCommand implements TabExecutor {
             throw new CommandArgumentException(argName + " cannot be empty.", argName);
         }
         return CompletableFuture.supplyAsync(() -> {
-            // This is inherently tricky because Bukkit's getOfflinePlayer(String) can be blocking if it needs to make a web request.
-            // However, PlayerUniqueIdLookupService might offer non-blocking ways, but that's more complex.
+            // First try to find online player (non-blocking)
+            Player onlinePlayer = Bukkit.getPlayerExact(playerName);
+            if (onlinePlayer != null) {
+                return onlinePlayer;
+            }
+            
+            // This is inherently tricky because Bukkit's getOfflinePlayer(String) can be blocking.
             // For now, using the potentially blocking call in an async task.
-            @SuppressWarnings("deprecation") // Using deprecated method for wider compatibility or specific use case
+            @SuppressWarnings("deprecation") // Necessary for offline player lookup by name
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerName);
 
             if (offlinePlayer == null || (!offlinePlayer.hasPlayedBefore() && !offlinePlayer.isOnline() && (offlinePlayer.getUniqueId() == null || !Bukkit.getOfflinePlayer(offlinePlayer.getUniqueId()).hasPlayedBefore()))) {

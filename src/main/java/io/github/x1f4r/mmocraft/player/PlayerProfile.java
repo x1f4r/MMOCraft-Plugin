@@ -68,9 +68,17 @@ public class PlayerProfile {
             this.baseFishingSpeed = 0;
             this.baseShootingSpeed = 0;
             // Log a warning if ConfigService is available (it should be by the time PlayerDataService creates this)
-            MMOCore core = io.github.x1f4r.mmocraft.MMOCraft.getInstance().getCore();
+            MMOCraft instance = io.github.x1f4r.mmocraft.MMOCraft.getInstance();
+            MMOCore core = (instance != null) ? instance.getCore() : null;
             if (core != null) {
-                core.getService(LoggingService.class).warn("PlayerProfile: 'player_defaults.base_stats' section missing in config.yml. Using hardcoded defaults.");
+                LoggingService logging = core.getService(LoggingService.class);
+                if (logging != null) {
+                    logging.warn("PlayerProfile: 'player_defaults.base_stats' section missing in config.yml. Using hardcoded defaults.");
+                } else {
+                    MMOCraft.getPluginLogger().warning("PlayerProfile: 'player_defaults.base_stats' section missing in config.yml. Using hardcoded defaults.");
+                }
+            } else {
+                MMOCraft.getPluginLogger().warning("PlayerProfile: 'player_defaults.base_stats' section missing in config.yml. Using hardcoded defaults.");
             }
         }
     }

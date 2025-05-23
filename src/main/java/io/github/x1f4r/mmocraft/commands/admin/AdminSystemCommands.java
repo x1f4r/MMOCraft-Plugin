@@ -4,6 +4,7 @@ import io.github.x1f4r.mmocraft.commands.AbstractMMOCommand;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.services.ConfigService;
 import io.github.x1f4r.mmocraft.services.LoggingService;
+import io.github.x1f4r.mmocraft.services.PlayerStatsService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -77,7 +78,47 @@ public class AdminSystemCommands extends AbstractMMOCommand {
                     if (args.length == 1) return tabCompleteFromList(List.of("true", "false"), args[0]);
                     // if (args.length == 2) return tabCompleteFromList(List.of("LoggingService", "all", ... other service names ...), args[1]);
                     return List.of();
-                });
+
+        
+        // Subcommand: performance [serviceName]
+        addSubCommand("performance", "mmocraft.admin.system.performance", 0, "[serviceName]",
+                (sender, args) -> {
+                    if (args.length == 0) {
+                        // Show performance for all services that support it
+                        sender.sendMessage(Component.text("=== MMOCraft Performance Statistics ===", NamedTextColor.GOLD));
+                        
+                        // PlayerStatsService performance
+                        try {
+                            PlayerStatsService statsService = core.getService(PlayerStatsService.class);
+                            if (statsService != null) {
+                                sender.sendMessage(Component.text(statsService.getPerformanceStats(), NamedTextColor.YELLOW));
+                            }
+                        } catch (Exception e) {
+                            sender.sendMessage(Component.text("Error getting PlayerStatsService performance: " + e.getMessage(), NamedTextColor.RED));
+                        }
+                        
+                        sender.sendMessage(Component.text("Use '/mmocadmin system performance <serviceName>' for detailed stats", NamedTextColor.GRAY));
+                    } else {
+                        String serviceName = args[0];
+                        switch (serviceName.toLowerCase()) {
+                            case "playerstats", "stats" -> {
+                                PlayerStatsService statsService = core.getService(PlayerStatsService.class);
+                                if (statsService != null) {
+                                    sender.sendMessage(Component.text(statsService.getPerformanceStats(), NamedTextColor.YELLOW));
+                                } else {
+                                    sender.sendMessage(Component.text("PlayerStatsService not available", NamedTextColor.RED));
+                                }
+                            }
+                            default -> sender.sendMessage(Component.text("Unknown service: " + serviceName + ". Available: playerstats", NamedTextColor.RED));
+                        }
+                    }
+                },
+                (sender, args) -> {
+                    if (args.length == 1) {
+                        return tabCompleteFromList(List.of("playerstats", "stats"), args[0]);
+                    }
+                    return List.of();
+                });                });
     }
 
     // This handler is called if `/mmocadmin system` is run with no further args,

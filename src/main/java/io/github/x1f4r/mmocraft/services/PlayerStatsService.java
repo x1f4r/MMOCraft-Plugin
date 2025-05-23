@@ -2,6 +2,7 @@ package io.github.x1f4r.mmocraft.services;
 
 import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent; // Paper API for precise armor changes
 import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.constants.MMOConstants;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.Service;
 import io.github.x1f4r.mmocraft.player.PlayerProfile;
@@ -19,12 +20,15 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.Iterator;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ConcurrentModificationException;
 
 public class PlayerStatsService implements Service {
     private MMOCore core; // Public for PlayerEquipmentListener to access plugin instance via core.getPlugin()
@@ -38,9 +42,19 @@ public class PlayerStatsService implements Service {
     // Stores active stat update tasks, de-bouncing rapid changes.
     private final Map<UUID, BukkitTask> updateTasks = new ConcurrentHashMap<>();
 
+    // Cache management constants
+    private static final int MAX_CACHE_SIZE = MMOConstants.Performance.MAX_CACHE_SIZE; // Maximum number of cached player stats
+    private static final long CACHE_CLEANUP_INTERVAL = MMOConstants.Performance.CACHE_CLEANUP_INTERVAL_TICKS; // 10 minutes in ticks
+    private BukkitTask cacheCleanupTask;
+    
+    // Performance monitoring
+    private volatile long totalRecalculations = 0;
+    private volatile long totalCacheHits = 0;
+    private volatile long totalCacheMisses = 0;
+    
     // Names for our custom attribute modifiers
-    private static final String MMO_MAX_HEALTH_MODIFIER_NAME = "mmoc_max_health";
-    private static final String MMO_SPEED_MODIFIER_NAME = "mmoc_speed";
+    private static final String MMO_MAX_HEALTH_MODIFIER_NAME = MMOConstants.Modifiers.MMO_MAX_HEALTH;
+    private static final String MMO_SPEED_MODIFIER_NAME = MMOConstants.Modifiers.MMO_SPEED;
 
     // Deterministic UUID generation for player-specific attribute modifiers
     // These salts ensure that modifiers are unique per player AND per attribute type
@@ -62,7 +76,7 @@ public class PlayerStatsService implements Service {
         // this.itemService = core.getService(ItemService.class); // When ItemService is added in Part 2
 
         core.registerListener(new PlayerEquipmentListener(this, core)); // Pass MMOCore for logging
-        logging.info(getServiceName() + " initialized.");
+        // Start cache cleanup task\n        startCacheCleanupTask();\n        \n        logging.info(getServiceName() + " initialized.");
 
         // Recalculate stats for any players already online (e.g., after /reload)
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -120,12 +134,18 @@ public class PlayerStatsService implements Service {
         // Schedule the actual recalculation to run on the next server tick (or slightly after)
         // This helps batch multiple rapid changes (e.g., quickly swapping armor pieces).
         BukkitTask newTask = Bukkit.getScheduler().runTaskLater(core.getPlugin(), () -> {
-            if (player.isOnline()) { // Double-check player is still online
-                recalculateAndApplyAllStats(player);
+            try {
+                if (player.isOnline()) { // Double-check player is still online
+                    recalculateAndApplyAllStats(player);
+                    logging.debug("Scheduled stat update task executed for " + player.getName());
+                } else {
+                    logging.debug("Skipped stat update for offline player: " + player.getName());
+            } catch (Exception e) {
+                logging.warn("Error executing scheduled stat update for " + player.getName(), e);
+            } finally {
+                updateTasks.remove(playerId); // Always remove self from tracking after execution
             }
-            updateTasks.remove(playerId); // Remove self from tracking after execution
-            logging.debug("Scheduled stat update task executed for " + player.getName());
-        }, 2L); // 2-tick delay; adjust as needed. 1L might be sufficient.
+        }, MMOConstants.Performance.STAT_UPDATE_DELAY_TICKS); // Small delay to batch rapid changes
         updateTasks.put(playerId, newTask);
     }
 
@@ -142,6 +162,9 @@ public class PlayerStatsService implements Service {
             return CalculatedPlayerStats.PURE_VANILLA_DEFAULTS;
         }
 
+        // Performance tracking
+        totalRecalculations++;
+        
         PlayerProfile profile = playerDataService.getProfile(player);
 
         // Initialize equipment contributions to zero
@@ -286,8 +309,12 @@ public class PlayerStatsService implements Service {
                     logging.warn("Failed to apply speed modifier for " + player.getName() + ": " + e.getMessage() + ". Attempting to remove and re-add.");
                     // Try removing again just in case, then re-add. This is a fallback.
                     removeModifierByUUID(speedAttr, modifierUUID, MMO_SPEED_MODIFIER_NAME); // Force remove
-                    try { speedAttr.addModifier(speedModifier); } catch (Exception ex) {
-                        logging.severe("Still failed to apply speed modifier after re-attempt for " + player.getName(), ex);
+                    try { 
+                        speedAttr.addModifier(speedModifier); 
+                    } catch (IllegalArgumentException ex) {
+                        logging.severe("Still failed to apply speed modifier after re-attempt for " + player.getName() + ": " + ex.getMessage());
+                    } catch (Exception ex) {
+                        logging.severe("Unexpected error applying speed modifier for " + player.getName(), ex);
                     }
                 }
             } else {
@@ -300,7 +327,7 @@ public class PlayerStatsService implements Service {
     }
 
     /**
-     * Generates a deterministic UUID for an attribute modifier based on player's UUID and a salt.
+     * Generates a deterministic UUID for an attribute modifier based on player's UUID and a salt.\n     * \n     * This method ensures that the same player will always get the same modifier UUID for the same\n     * attribute type, which is crucial for proper modifier management. Without deterministic UUIDs,\n     * we would create duplicate modifiers on each stat recalculation instead of replacing existing ones.\n     * \n     * The salt parameter differentiates between different types of modifiers (e.g., health vs speed)\n     * for the same player, ensuring each attribute type gets a unique but consistent UUID.\n     * \n     * @param playerUUID The unique identifier of the player\n     * @param salt A UUID salt that differentiates modifier types (e.g., health, speed)\n     * @return A deterministic UUID that will be the same for the same inputs
      */
     private UUID getDeterministicUUID(UUID playerUUID, UUID salt) {
         String combined = playerUUID.toString() + ":" + salt.toString();
@@ -328,9 +355,12 @@ public class PlayerStatsService implements Service {
             try {
                 attributeInstance.removeModifier(toRemove);
                 logging.debug("Removed attribute modifier '" + expectedName + "' (UUID: " + modifierUUID + ") from " + attributeInstance.getAttribute().getKey());
-            } catch (Exception e) { // Catch broad exceptions as Bukkit can be finicky with modifier removal
-                logging.warn("Could not remove modifier " + expectedName + " for attribute " +
+            } catch (IllegalArgumentException e) {
+                logging.warn("Modifier " + expectedName + " not found for attribute " +
                         attributeInstance.getAttribute().getKey() + " (UUID: " + modifierUUID + "): " + e.getMessage());
+            } catch (Exception e) { // Catch other exceptions as Bukkit can be finicky
+                logging.warn("Unexpected error removing modifier " + expectedName + " for attribute " +
+                        attributeInstance.getAttribute().getKey() + " (UUID: " + modifierUUID + ")", e);
             }
         }
     }
@@ -380,4 +410,91 @@ public class PlayerStatsService implements Service {
         if (task != null && !task.isCancelled()) task.cancel();
         logging.debug(getServiceName() + " processed quit for " + player.getName() + ", cleaned up stats and modifiers.");
     }
-}
+    /**
+     * Starts the periodic cache cleanup task to prevent memory leaks.
+     */
+    private void startCacheCleanupTask() {
+        if (cacheCleanupTask != null) {
+            cacheCleanupTask.cancel();
+        }
+        
+        cacheCleanupTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
+            core.getPlugin(),
+            this::cleanupStatsCache,
+            CACHE_CLEANUP_INTERVAL,
+            CACHE_CLEANUP_INTERVAL
+        );
+        
+        logging.debug("Started stats cache cleanup task with interval: " + CACHE_CLEANUP_INTERVAL + " ticks");
+    }
+    
+    /**
+     * Cleans up the stats cache by removing entries for offline players
+     * and enforcing size limits.
+     */
+    private void cleanupStatsCache() {
+        try {
+            int initialSize = statsCache.size();
+            
+            // Remove entries for offline players
+            statsCache.entrySet().removeIf(entry -> {
+                UUID playerId = entry.getKey();
+                Player player = Bukkit.getPlayer(playerId);
+                return player == null || !player.isOnline();
+            });
+            
+            int removedOffline = initialSize - statsCache.size();
+            
+            // Enforce cache size limit by removing excess entries
+            if (statsCache.size() > MAX_CACHE_SIZE) {
+                int toRemove = statsCache.size() - MAX_CACHE_SIZE;
+                Iterator<UUID> iterator = statsCache.keySet().iterator();
+                for (int i = 0; i < toRemove && iterator.hasNext(); i++) {
+                    iterator.next();
+                    iterator.remove();
+                }
+                logging.warn("Stats cache exceeded maximum size. Removed " + toRemove + " oldest entries.");
+            }
+            
+            if (removedOffline > 0) {
+                logging.debug("Cache cleanup: removed " + removedOffline + " offline player entries. Current size: " + statsCache.size());
+            }
+        } catch (Exception e) {
+            logging.warn("Unexpected error during stats cache cleanup", e);
+        }
+    }
+    
+    @Override
+    public void shutdown() {
+        if (cacheCleanupTask != null) {
+            cacheCleanupTask.cancel();
+            cacheCleanupTask = null;
+        }
+        
+        // Cancel all pending update tasks
+        updateTasks.values().forEach(task -> {
+            if (!task.isCancelled()) {
+                task.cancel();
+            }
+        });
+        updateTasks.clear();
+        
+        // Clear caches
+        statsCache.clear();
+        
+        logging.info(getServiceName() + " shutdown completed.");
+    }}
+    
+    /**
+     * Returns performance statistics for monitoring and debugging.
+     * @return A formatted string with performance metrics
+     */
+    public String getPerformanceStats() {
+        long cacheHitRate = totalCacheHits + totalCacheMisses > 0 ? 
+            (totalCacheHits * 100) / (totalCacheHits + totalCacheMisses) : 0;
+        
+        return String.format(
+            "PlayerStatsService Performance: Recalculations=%d, CacheHits=%d, CacheMisses=%d, HitRate=%d%%, CacheSize=%d",
+            totalRecalculations, totalCacheHits, totalCacheMisses, cacheHitRate, statsCache.size()
+        );
+    }}

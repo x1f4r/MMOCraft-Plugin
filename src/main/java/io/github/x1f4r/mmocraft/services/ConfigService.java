@@ -1,11 +1,13 @@
 package io.github.x1f4r.mmocraft.services;
 
 import io.github.x1f4r.mmocraft.MMOCraft;
+import io.github.x1f4r.mmocraft.constants.MMOConstants;
 import io.github.x1f4r.mmocraft.core.MMOCore;
 import io.github.x1f4r.mmocraft.core.Service;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,14 +24,15 @@ import java.util.stream.Collectors;
 
 public class ConfigService implements Service {
     private final MMOCraft plugin;
+    private MMOCore core; // Reference to MMOCore for service access
     private LoggingService logging; // Injected by MMOCore
 
-    public static final String MAIN_CONFIG_FILENAME = "config.yml";
-    public static final String ITEMS_CONFIG_FILENAME = "items.yml";
-    public static final String MOBS_CONFIG_FILENAME = "mobs.yml";
-    public static final String RECIPES_CONFIG_FILENAME = "recipes.yml";
-    public static final String CUSTOM_MOBS_CONFIG_FILENAME = "custom_mobs.yml";
-    public static final String LOOT_TABLES_CONFIG_FILENAME = "loot_tables.yml";
+    public static final String MAIN_CONFIG_FILENAME = MMOConstants.Config.MAIN;
+    public static final String ITEMS_CONFIG_FILENAME = MMOConstants.Config.ITEMS;
+    public static final String MOBS_CONFIG_FILENAME = MMOConstants.Config.MOBS;
+    public static final String RECIPES_CONFIG_FILENAME = MMOConstants.Config.RECIPES;
+    public static final String CUSTOM_MOBS_CONFIG_FILENAME = MMOConstants.Config.CUSTOM_MOBS;
+    public static final String LOOT_TABLES_CONFIG_FILENAME = MMOConstants.Config.LOOT_TABLES;
     // Add other config filenames as constants when they are introduced
 
     private final Map<String, FileConfiguration> loadedConfigs = new ConcurrentHashMap<>();
@@ -43,6 +46,7 @@ public class ConfigService implements Service {
 
     @Override
     public void initialize(MMOCore core) {
+        this.core = core; // Store reference to MMOCore
         this.logging = core.getService(LoggingService.class);
 
         // Load main config first as other initializations might depend on it (e.g., LoggingService debug mode)
@@ -170,6 +174,9 @@ public class ConfigService implements Service {
         } else {
             logging.warn("Configuration file '" + configFileName + "' does not exist and default was not/could not be saved. Using empty configuration.");
         }
+        // Validate configuration before storing
+        validateConfiguration(configFileName, config);
+        
         loadedConfigs.put(configFileName, config);
         logging.debug("Managed configuration: " + configFileName + " (Path: " + configFile.getAbsolutePath() + ")");
     }
@@ -289,7 +296,7 @@ public class ConfigService implements Service {
     // Default messages - can be overridden by config.yml
     private static final String DEFAULT_NO_PERMISSION = "You do not have permission to use this command.";
     private static final String DEFAULT_CONSOLE_NOT_ALLOWED = "This command cannot be run from the console.";
-    private static final String DEFAULT_COMMAND_ERROR = "An error occurred while executing the command. Please contact an administrator.";
+    private static final String DEFAULT_COMMAND_ERROR = MMOConstants.Messages.DEFAULT_COMMAND_ERROR;
 
     public String getNoPermissionMessage() {
         return getMainConfig().getString("messages.no_permission", DEFAULT_NO_PERMISSION);
@@ -302,4 +309,154 @@ public class ConfigService implements Service {
     public String getCommandErrorMessage() {
         return getMainConfig().getString("messages.command_error", DEFAULT_COMMAND_ERROR);
     }
-}
+
+    /**
+     * Validates configuration values to ensure they are within acceptable ranges
+     * and contain required fields.
+     * @param configFileName The name of the configuration file being validated
+     * @param config The configuration to validate
+     */
+    private void validateConfiguration(String configFileName, FileConfiguration config) {
+        try {
+            switch (configFileName) {
+                case MAIN_CONFIG_FILENAME:
+                    validateMainConfig(config);
+                    break;
+                case ITEMS_CONFIG_FILENAME:
+                    validateItemsConfig(config);
+                    break;
+                case MOBS_CONFIG_FILENAME:
+                case CUSTOM_MOBS_CONFIG_FILENAME:
+                    validateMobsConfig(config);
+                    break;
+                case RECIPES_CONFIG_FILENAME:
+                    validateRecipesConfig(config);
+                    break;
+                case LOOT_TABLES_CONFIG_FILENAME:
+                    validateLootTablesConfig(config);
+                    break;
+                default:
+                    logging.debug("No specific validation rules for config: " + configFileName);
+            }
+        } catch (Exception e) {
+            logging.warn("Error during configuration validation for " + configFileName, e);
+        }
+    }
+    
+    private void validateMainConfig(FileConfiguration config) {
+        // Validate debug mode
+        if (!config.contains("debug")) {
+            logging.warn("Main config missing 'debug' setting, using default: false");
+        }
+        
+        // Validate messages section
+        if (!config.contains("messages")) {
+            logging.warn("Main config missing 'messages' section, using defaults");
+        }
+        
+        // Validate player defaults
+        if (config.contains("player_defaults.base_stats")) {
+            validateStatValues(config, "player_defaults.base_stats");
+        } else {
+            logging.warn("Main config missing 'player_defaults.base_stats' section");
+        }
+    }
+    
+    private void validateItemsConfig(FileConfiguration config) {
+        if (config.getConfigurationSection("items") == null) {
+            logging.warn("Items config missing 'items' section");
+            return;
+        }
+        
+        for (String itemKey : config.getConfigurationSection("items").getKeys(false)) {
+            String path = "items." + itemKey;
+            
+            // Validate required fields
+            if (!config.contains(path + ".material")) {
+                logging.warn("Item '" + itemKey + "' missing required 'material' field");
+            }
+            
+            // Validate stat bonuses if present
+            if (config.contains(path + ".stats")) {
+                validateStatValues(config, path + ".stats");
+            }
+        }
+    }
+    
+    private void validateMobsConfig(FileConfiguration config) {
+        if (config.getConfigurationSection("mobs") == null) {
+            logging.warn("Mobs config missing 'mobs' section");
+            return;
+        }
+        
+        for (String mobKey : config.getConfigurationSection("mobs").getKeys(false)) {
+            String path = "mobs." + mobKey;
+            
+            // Validate health
+            double health = config.getDouble(path + ".health", 20.0);
+            if (health <= 0 || health > 2048) {
+                logging.warn("Mob '" + mobKey + "' has invalid health value: " + health + " (should be 1-2048)");
+            }
+            
+            // Validate damage
+            double damage = config.getDouble(path + ".damage", 1.0);
+            if (damage < 0 || damage > 100) {
+                logging.warn("Mob '" + mobKey + "' has invalid damage value: " + damage + " (should be 0-100)");
+            }
+        }
+    }
+    
+    private void validateRecipesConfig(FileConfiguration config) {
+        if (config.getConfigurationSection("recipes") == null) {
+            logging.warn("Recipes config missing 'recipes' section");
+            return;
+        }
+        
+        for (String recipeKey : config.getConfigurationSection("recipes").getKeys(false)) {
+            String path = "recipes." + recipeKey;
+            
+            if (!config.contains(path + ".result")) {
+                logging.warn("Recipe '" + recipeKey + "' missing required 'result' field");
+            }
+            
+            if (!config.contains(path + ".ingredients")) {
+                logging.warn("Recipe '" + recipeKey + "' missing required 'ingredients' field");
+            }
+        }
+    }
+    
+    private void validateLootTablesConfig(FileConfiguration config) {
+        if (config.getConfigurationSection("loot_tables") == null) {
+            logging.warn("Loot tables config missing 'loot_tables' section");
+            return;
+        }
+        
+        for (String tableKey : config.getConfigurationSection("loot_tables").getKeys(false)) {
+            String path = "loot_tables." + tableKey;
+            
+            if (!config.contains(path + ".entries")) {
+                logging.warn("Loot table '" + tableKey + "' missing required 'entries' field");
+            }
+        }
+    }
+    
+    private void validateStatValues(FileConfiguration config, String basePath) {
+        String[] statNames = {"maxHealth", "maxMana", "strength", "defense", "intelligence", 
+                             "speed", "critChance", "critDamage", "speedPercent", "miningSpeed", 
+                             "foragingSpeed", "fishingSpeed", "shootingSpeed"};
+        
+        for (String stat : statNames) {
+            if (config.contains(basePath + "." + stat)) {
+                double value = config.getDouble(basePath + "." + stat);
+                
+                // Basic range validation
+                if (stat.equals("critChance") && (value < 0 || value > 100)) {
+                    logging.warn("Invalid " + stat + " value: " + value + " (should be 0-100)");
+                } else if (stat.endsWith("Percent") && (value < 0 || value > 1000)) {
+                    logging.warn("Invalid " + stat + " value: " + value + " (should be 0-1000)");
+                } else if (value < 0) {
+                    logging.warn("Invalid " + stat + " value: " + value + " (should be non-negative)");
+                }
+            }
+        }
+    }}

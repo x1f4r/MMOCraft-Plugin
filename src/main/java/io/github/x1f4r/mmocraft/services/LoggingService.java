@@ -8,6 +8,21 @@ import org.bukkit.configuration.file.FileConfiguration; // For reading debug_mod
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * MMOCraft Logging Service - provides centralized logging with debug mode support.
+ * 
+ * LOGGING STANDARDS:
+ * - DEBUG: Detailed information for development/troubleshooting (only when debug=true)
+ * - INFO: General information about plugin operations and state changes
+ * - WARN: Recoverable issues that may indicate problems but don't stop functionality
+ * - SEVERE: Critical errors that may cause plugin malfunction or data loss
+ * 
+ * Usage Guidelines:
+ * - Use debug() for verbose operational details, performance metrics, state transitions
+ * - Use info() for important events like service initialization, player joins, major operations
+ * - Use warn() for configuration issues, deprecated usage, recoverable errors
+ * - Use severe() for unrecoverable errors, critical failures, data corruption
+ */
 public class LoggingService implements Service {
     private final Logger logger; // Standard Java Logger provided by Bukkit plugin
     private boolean debugMode = false;

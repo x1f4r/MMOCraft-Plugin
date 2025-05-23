@@ -57,8 +57,8 @@ public class PersistenceService implements Service {
         Objects.requireNonNull(type, "PersistentDataType cannot be null for saving PDC data.");
 
         if (!player.isOnline()) { // PDC operations generally require an online player
-            logging.warn("Attempted to save PDC data for offline player: " + player.getName() + ", key: " + key.getKey() + ". Operation might fail or be ignored.");
-            // Optionally, throw an exception or return a boolean indicating failure.
+            logging.warn("Attempted to save PDC data for offline player: " + player.getName() + ", key: " + key.getKey() + ". Operation skipped.");
+            return; // Skip operation for offline players to prevent errors
         }
 
         PersistentDataContainer pdc = player.getPersistentDataContainer();
