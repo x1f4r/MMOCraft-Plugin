@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew:*)",
+      "Bash(ls:*)",
+      "Bash(apt list:*)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(whereis:*)",
+      "Bash(mkdir:*)",
+      "Bash(wget:*)",
+      "Bash(tar:*)",
+      "Bash(export:*)",
+      "Bash(export PATH=$JAVA_HOME/bin:$PATH)",
+      "Bash(java:*)",
+      "WebFetch(domain:repo.purpurmc.org)",
+      "WebFetch(domain:docs.papermc.io)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(git rm:*)",
+      "Bash(git reset:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": []
+  }
+}
