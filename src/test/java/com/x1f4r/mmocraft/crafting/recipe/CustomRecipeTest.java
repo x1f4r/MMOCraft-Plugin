@@ -89,13 +89,13 @@ class CustomRecipeTest {
     @Test
     void constructor_shapeless_nullIngredients_throwsException() {
         assertThrows(NullPointerException.class, () ->
-            new CustomRecipe("test_id", validOutput, RecipeType.CUSTOM_SHAPELESS, null, null));
+            new CustomRecipe("test_id", validOutput, RecipeType.CUSTOM_SHAPELESS, (List<CustomRecipeIngredient>) null, null));
     }
 
     @Test
     void constructor_shaped_nullIngredients_throwsException() {
         assertThrows(NullPointerException.class, () ->
-            new CustomRecipe("test_id", validOutput, RecipeType.CUSTOM_SHAPED, null, null));
+            new CustomRecipe("test_id", validOutput, RecipeType.CUSTOM_SHAPED, (Map<Integer, CustomRecipeIngredient>) null, null));
     }
 
     @Test

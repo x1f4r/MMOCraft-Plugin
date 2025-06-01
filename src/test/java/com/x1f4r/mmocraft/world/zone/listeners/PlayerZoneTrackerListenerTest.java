@@ -30,6 +30,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map; // Added import
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger; // Bukkit's logger
@@ -80,11 +81,11 @@ class PlayerZoneTrackerListenerTest {
         });
 
 
-        listener = new PlayerZoneTrackerListener(mockPlugin, mockZoneManager, mockEventBusService, mockLoggingUtil);
+        listener = new PlayerZoneTrackerListener(mockZoneManager, mockLoggingUtil, mockEventBusService); // Corrected constructor order based on main code
 
         zone1 = new Zone("zone1", "Zone One", "test_world", 0,0,0, 10,10,10, Map.of("isSafe", true));
         zone2 = new Zone("zone2", "Zone Two", "test_world", 5,5,5, 15,15,15, Map.of("isPvp", true)); // Overlaps zone1
-        zone3 = new Zone("zone3", "Zone Three", "test_world", 20,20,20, 30,30,30);
+        zone3 = new Zone("zone3", "Zone Three", "test_world", 20,20,20, 30,30,30, null); // Already corrected, ensure order for listener
     }
 
     private Location loc(double x, double y, double z) {
@@ -99,8 +100,8 @@ class PlayerZoneTrackerListenerTest {
 
         listener.onPlayerMove(event);
 
-        verify(mockZoneManager, never()).getPlayerCurrentZones(any());
-        verify(mockZoneManager, never()).getZonesAt(any());
+        verify(mockZoneManager, never()).getPlayerCurrentZoneIds(any(Player.class)); // Corrected method name and arg type
+        verify(mockZoneManager, never()).getZones(any(Location.class)); // Corrected method name
         verify(mockEventBusService, never()).call(any());
     }
 
@@ -109,13 +110,13 @@ class PlayerZoneTrackerListenerTest {
         Location from = loc(100, 100, 100); // Outside all zones
         Location to = loc(1, 1, 1);       // Inside zone1
 
-        when(mockZoneManager.getPlayerCurrentZones(playerUUID)).thenReturn(Collections.emptySet());
-        when(mockZoneManager.getZonesAt(to)).thenReturn(List.of(zone1));
+        when(mockZoneManager.getPlayerCurrentZoneIds(mockPlayer)).thenReturn(Collections.emptySet()); // Corrected
+        when(mockZoneManager.getZones(to)).thenReturn(List.of(zone1)); // Corrected
 
         PlayerMoveEvent event = new PlayerMoveEvent(mockPlayer, from, to);
         listener.onPlayerMove(event);
 
-        verify(mockZoneManager).updatePlayerZoneCache(playerUUID, Set.of(zone1));
+        verify(mockZoneManager).updatePlayerCurrentZones(playerUUID, Set.of("zone1")); // Corrected (pass Set<String>)
         verify(mockEventBusService).call(enterEventCaptor.capture());
         assertEquals(zone1, enterEventCaptor.getValue().getZone());
         assertEquals(mockPlayer, enterEventCaptor.getValue().getPlayer());
@@ -128,13 +129,13 @@ class PlayerZoneTrackerListenerTest {
         Location from = loc(1, 1, 1);       // Inside zone1
         Location to = loc(100, 100, 100); // Outside all zones
 
-        when(mockZoneManager.getPlayerCurrentZones(playerUUID)).thenReturn(Set.of(zone1));
-        when(mockZoneManager.getZonesAt(to)).thenReturn(Collections.emptyList());
+        when(mockZoneManager.getPlayerCurrentZoneIds(mockPlayer)).thenReturn(Set.of("zone1")); // Corrected (pass Set<String> for cache)
+        when(mockZoneManager.getZones(to)).thenReturn(Collections.emptyList()); // Corrected
 
         PlayerMoveEvent event = new PlayerMoveEvent(mockPlayer, from, to);
         listener.onPlayerMove(event);
 
-        verify(mockZoneManager).updatePlayerZoneCache(playerUUID, Collections.emptySet());
+        verify(mockZoneManager).updatePlayerCurrentZones(playerUUID, Collections.emptySet()); // Corrected
         verify(mockEventBusService).call(leaveEventCaptor.capture());
         assertEquals(zone1, leaveEventCaptor.getValue().getZone());
         assertEquals(mockPlayer, leaveEventCaptor.getValue().getPlayer());
@@ -147,14 +148,14 @@ class PlayerZoneTrackerListenerTest {
         Location from = loc(1, 1, 1);   // Only in zone1 (0,0,0 to 10,10,10)
         Location to = loc(12, 12, 12);  // Only in zone2 (5,5,5 to 15,15,15)
 
-        when(mockZoneManager.getPlayerCurrentZones(playerUUID)).thenReturn(Set.of(zone1));
-        when(mockZoneManager.getZonesAt(from)).thenReturn(List.of(zone1)); // For initial setup consistency
-        when(mockZoneManager.getZonesAt(to)).thenReturn(List.of(zone2));
+        when(mockZoneManager.getPlayerCurrentZoneIds(mockPlayer)).thenReturn(Set.of("zone1")); // Corrected
+        when(mockZoneManager.getZones(from)).thenReturn(List.of(zone1)); // Corrected
+        when(mockZoneManager.getZones(to)).thenReturn(List.of(zone2)); // Corrected
 
         PlayerMoveEvent event = new PlayerMoveEvent(mockPlayer, from, to);
         listener.onPlayerMove(event);
 
-        verify(mockZoneManager).updatePlayerZoneCache(playerUUID, Set.of(zone2));
+        verify(mockZoneManager).updatePlayerCurrentZones(playerUUID, Set.of("zone2")); // Corrected
         verify(mockEventBusService).call(enterEventCaptor.capture());
         assertEquals(zone2, enterEventCaptor.getValue().getZone());
         verify(mockEventBusService).call(leaveEventCaptor.capture());
@@ -168,13 +169,13 @@ class PlayerZoneTrackerListenerTest {
         Location from = loc(1, 1, 1); // In zone1 only
         Location to = loc(7, 7, 7);   // In zone1 AND zone2
 
-        when(mockZoneManager.getPlayerCurrentZones(playerUUID)).thenReturn(Set.of(zone1));
-        when(mockZoneManager.getZonesAt(to)).thenReturn(List.of(zone1, zone2));
+        when(mockZoneManager.getPlayerCurrentZoneIds(mockPlayer)).thenReturn(Set.of("zone1")); // Corrected
+        when(mockZoneManager.getZones(to)).thenReturn(List.of(zone1, zone2)); // Corrected
 
         PlayerMoveEvent event = new PlayerMoveEvent(mockPlayer, from, to);
         listener.onPlayerMove(event);
 
-        verify(mockZoneManager).updatePlayerZoneCache(playerUUID, Set.of(zone1, zone2));
+        verify(mockZoneManager).updatePlayerCurrentZones(playerUUID, Set.of("zone1", "zone2")); // Corrected
         verify(mockEventBusService).call(enterEventCaptor.capture()); // Only zone2 should be new
         assertEquals(zone2, enterEventCaptor.getValue().getZone());
         verify(mockEventBusService, never()).call(any(PlayerLeaveZoneEvent.class)); // Still in zone1
@@ -186,13 +187,13 @@ class PlayerZoneTrackerListenerTest {
     void onPlayerJoin_shouldFireEnterEventsForInitialZones() {
         Location joinLocation = loc(7, 7, 7); // In zone1 and zone2
         when(mockPlayer.getLocation()).thenReturn(joinLocation);
-        when(mockZoneManager.getZonesAt(joinLocation)).thenReturn(List.of(zone1, zone2));
+        when(mockZoneManager.getZones(joinLocation)).thenReturn(List.of(zone1, zone2)); // Corrected
 
         PlayerJoinEvent event = new PlayerJoinEvent(mockPlayer, "Test join message");
         listener.onPlayerJoin(event);
 
         // Runnable is captured and executed by mockScheduler setup
-        verify(mockZoneManager).updatePlayerZoneCache(playerUUID, Set.of(zone1, zone2));
+        verify(mockZoneManager).updatePlayerCurrentZones(playerUUID, Set.of("zone1", "zone2")); // Corrected
         verify(mockEventBusService, times(2)).call(enterEventCaptor.capture());
 
         Set<Zone> enteredZones = new HashSet<>();
@@ -207,7 +208,7 @@ class PlayerZoneTrackerListenerTest {
 
     @Test
     void onPlayerQuit_shouldFireLeaveEventsAndClearCache() {
-        when(mockZoneManager.getPlayerCurrentZones(playerUUID)).thenReturn(Set.of(zone1, zone2));
+        when(mockZoneManager.getPlayerCurrentZoneIds(mockPlayer)).thenReturn(Set.of("zone1", "zone2")); // Corrected
 
         PlayerQuitEvent event = new PlayerQuitEvent(mockPlayer, "Test quit message");
         listener.onPlayerQuit(event);
@@ -231,14 +232,14 @@ class PlayerZoneTrackerListenerTest {
 
         when(mockPlayer.getLocation()).thenReturn(to); // After teleport, player is at 'to'
 
-        when(mockZoneManager.getPlayerCurrentZones(playerUUID)).thenReturn(Collections.emptySet());
-        when(mockZoneManager.getZonesAt(to)).thenReturn(List.of(zone1));
+        when(mockZoneManager.getPlayerCurrentZoneIds(mockPlayer)).thenReturn(Collections.emptySet()); // Corrected
+        when(mockZoneManager.getZones(to)).thenReturn(List.of(zone1)); // Corrected
 
         PlayerTeleportEvent event = new PlayerTeleportEvent(mockPlayer, from, to, TeleportCause.PLUGIN);
         listener.onPlayerTeleport(event);
 
         // Runnable is captured and executed by mockScheduler setup
-        verify(mockZoneManager).updatePlayerZoneCache(playerUUID, Set.of(zone1));
+        verify(mockZoneManager).updatePlayerCurrentZones(playerUUID, Set.of("zone1")); // Corrected
         verify(mockEventBusService).call(enterEventCaptor.capture());
         assertEquals(zone1, enterEventCaptor.getValue().getZone());
         verify(mockPlayer).sendMessage(contains("Entered Zone One"));
@@ -249,14 +250,14 @@ class PlayerZoneTrackerListenerTest {
         Location from = loc(1, 1, 1); // In zone1
         Location to = loc(2, 2, 2);   // Still only in zone1
 
-        when(mockZoneManager.getPlayerCurrentZones(playerUUID)).thenReturn(Set.of(zone1));
-        when(mockZoneManager.getZonesAt(to)).thenReturn(List.of(zone1));
+        when(mockZoneManager.getPlayerCurrentZoneIds(mockPlayer)).thenReturn(Set.of("zone1")); // Corrected
+        when(mockZoneManager.getZones(to)).thenReturn(List.of(zone1)); // Corrected
 
         PlayerMoveEvent event = new PlayerMoveEvent(mockPlayer, from, to);
         listener.onPlayerMove(event);
 
         // Cache update might happen with the same set, that's fine.
-        verify(mockZoneManager).updatePlayerZoneCache(playerUUID, Set.of(zone1));
+        verify(mockZoneManager).updatePlayerCurrentZones(playerUUID, Set.of("zone1")); // Corrected
         verify(mockEventBusService, never()).call(any(PlayerEnterZoneEvent.class));
         verify(mockEventBusService, never()).call(any(PlayerLeaveZoneEvent.class));
         verify(mockPlayer, never()).sendMessage(anyString()); // No redundant messages

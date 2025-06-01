@@ -6,6 +6,8 @@ import com.x1f4r.mmocraft.playerdata.model.PlayerProfile;
 import com.x1f4r.mmocraft.skill.model.Skill;
 import com.x1f4r.mmocraft.skill.model.SkillType;
 import com.x1f4r.mmocraft.skill.service.SkillRegistryService;
+import com.x1f4r.mmocraft.skill.impl.StrongStrikeSkill; // Added import
+import com.x1f4r.mmocraft.skill.impl.MinorHealSkill; // Added import
 import com.x1f4r.mmocraft.util.LoggingUtil;
 
 import org.bukkit.Bukkit;
@@ -22,9 +24,11 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays; // Added
+import java.util.Collections;
+import java.util.List;   // Added
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -100,7 +104,7 @@ class ExecuteSkillCommandTest {
         when(mockSkillRegistry.getSkill(testSkillId)).thenReturn(Optional.of(mockSkill));
         when(mockSkill.canUse(mockSenderProfile)).thenReturn(false);
         when(mockSenderProfile.isSkillOnCooldown(testSkillId)).thenReturn(false); // Not on cooldown
-        when(mockSenderProfile.getCurrentMana()).thenReturn(5.0);
+        when(mockSenderProfile.getCurrentMana()).thenReturn(5L); // Corrected to 5L
         when(mockSkill.getManaCost()).thenReturn(10.0);
 
         executeSkillCommand.onCommand(mockSenderPlayer, new String[]{testSkillId});

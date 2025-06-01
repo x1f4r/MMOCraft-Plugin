@@ -42,6 +42,7 @@ class ItemAdminCommandTest {
     @Mock private Player mockTargetPlayer;
     @Mock private PlayerInventory mockPlayerInventory;
     @Mock private Server mockServer; // For Bukkit.getPlayerExact
+    @Mock private org.bukkit.command.Command mockBukkitCommand; // Added
 
     @Captor private ArgumentCaptor<String> messageCaptor;
     @Captor private ArgumentCaptor<ItemStack> itemStackCaptor;
@@ -86,15 +87,17 @@ class ItemAdminCommandTest {
     // --- GIVE Subcommand ---
     @Test
     void giveCmd_noPermission_sendsNoPermMessage() {
+        when(mockSender.hasPermission("mmocraft.admin.item")).thenReturn(true); // Main command permission
         when(mockSender.hasPermission("mmocraft.admin.item.give")).thenReturn(false);
-        itemAdminCommand.getSubCommands().get("give").onCommand(mockSender, new String[]{"Player", "item_id"});
+        itemAdminCommand.onCommand(mockSender, mockBukkitCommand, "itemadmin", new String[]{"give", "Player", "item_id"});
         verify(mockSender).sendMessage(ChatColor.RED + "You don't have permission for this command.");
     }
 
     @Test
     void giveCmd_notEnoughArgs_sendsUsage() {
+        when(mockSender.hasPermission("mmocraft.admin.item")).thenReturn(true);
         when(mockSender.hasPermission("mmocraft.admin.item.give")).thenReturn(true);
-        itemAdminCommand.getSubCommands().get("give").onCommand(mockSender, new String[]{"PlayerOnly"});
+        itemAdminCommand.onCommand(mockSender, mockBukkitCommand, "itemadmin", new String[]{"give", "PlayerOnly"});
         verify(mockSender).sendMessage(ChatColor.RED + "Usage: /mmocadm item give <playerName> <customItemId> [amount]");
     }
 
@@ -102,9 +105,10 @@ class ItemAdminCommandTest {
     void giveCmd_playerOffline_sendsError() {
         try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
             mockedBukkit.when(() -> Bukkit.getPlayerExact("OfflinePlayer")).thenReturn(null);
+            when(mockSender.hasPermission("mmocraft.admin.item")).thenReturn(true);
             when(mockSender.hasPermission("mmocraft.admin.item.give")).thenReturn(true);
 
-            itemAdminCommand.getSubCommands().get("give").onCommand(mockSender, new String[]{"OfflinePlayer", testItemId});
+            itemAdminCommand.onCommand(mockSender, mockBukkitCommand, "itemadmin", new String[]{"give", "OfflinePlayer", testItemId});
             verify(mockSender).sendMessage(ChatColor.RED + "Player 'OfflinePlayer' not found or not online.");
         }
     }
@@ -113,18 +117,25 @@ class ItemAdminCommandTest {
     void giveCmd_itemNotFound_sendsError() {
         try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
             mockedBukkit.when(() -> Bukkit.getPlayerExact(targetPlayerName)).thenReturn(mockTargetPlayer);
+            when(mockSender.hasPermission("mmocraft.admin.item")).thenReturn(true);
             when(mockSender.hasPermission("mmocraft.admin.item.give")).thenReturn(true);
             when(mockCustomItemRegistry.getCustomItem("unknown_item")).thenReturn(Optional.empty());
 
-            itemAdminCommand.getSubCommands().get("give").onCommand(mockSender, new String[]{targetPlayerName, "unknown_item"});
+            itemAdminCommand.onCommand(mockSender, mockBukkitCommand, "itemadmin", new String[]{"give", targetPlayerName, "unknown_item"});
             verify(mockSender).sendMessage(ChatColor.RED + "Custom item with ID 'unknown_item' not found.");
         }
     }
 
     @Test
     void giveCmd_invalidAmount_sendsError() {
+        when(mockSender.hasPermission("mmocraft.admin.item")).thenReturn(true);
         when(mockSender.hasPermission("mmocraft.admin.item.give")).thenReturn(true);
-        itemAdminCommand.getSubCommands().get("give").onCommand(mockSender, new String[]{targetPlayerName, testItemId, "not_a_number"});
+        // This test might not need Bukkit.getPlayerExact if it fails before that.
+        // However, the command logic might try to resolve player first.
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(targetPlayerName)).thenReturn(mockTargetPlayer);
+            itemAdminCommand.onCommand(mockSender, mockBukkitCommand, "itemadmin", new String[]{"give", targetPlayerName, testItemId, "not_a_number"});
+        }
         verify(mockSender).sendMessage(ChatColor.RED + "Invalid amount: not_a_number");
     }
 
@@ -145,7 +156,7 @@ class ItemAdminCommandTest {
             when(mockCustomItem.createItemStack(5)).thenReturn(expectedItemStack);
 
 
-            itemAdminCommand.getSubCommands().get("give").onCommand(mockSender, new String[]{targetPlayerName, testItemId, "5"});
+            itemAdminCommand.onCommand(mockSender, mockBukkitCommand, "itemadmin", new String[]{"give", targetPlayerName, testItemId, "5"});
 
             verify(mockPlayerInventory).addItem(itemStackCaptor.capture());
             assertSame(expectedItemStack, itemStackCaptor.getValue());

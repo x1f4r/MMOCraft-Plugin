@@ -20,13 +20,15 @@ class SkillRegistryServiceTest {
 
     @Mock
     private LoggingUtil mockLogger;
+    @Mock // Added
+    private com.x1f4r.mmocraft.core.MMOCraftPlugin mockPlugin; // Added for TestSkill constructor
 
     private BasicSkillRegistryService skillRegistryService;
 
     // Dummy Skill implementation for testing
     private static class TestSkill extends Skill {
-        public TestSkill(String skillId, String skillName) {
-            super(skillId, skillName, "A test skill.", 0, 0, 0, SkillType.PASSIVE);
+        public TestSkill(com.x1f4r.mmocraft.core.MMOCraftPlugin plugin, String skillId, String skillName) { // Added plugin param
+            super(plugin, skillId, skillName, "A test skill.", 0.0, 0.0, 0.0, SkillType.PASSIVE); // Added plugin, changed ints to doubles
         }
         @Override
         public void execute(com.x1f4r.mmocraft.playerdata.model.PlayerProfile casterProfile, org.bukkit.entity.Entity targetEntity, org.bukkit.Location targetLocation) {
@@ -41,7 +43,7 @@ class SkillRegistryServiceTest {
 
     @Test
     void registerSkill_newSkill_registersSuccessfully() {
-        Skill skill1 = new TestSkill("fireball", "Fireball");
+        Skill skill1 = new TestSkill(mockPlugin, "fireball", "Fireball"); // Pass mockPlugin
         skillRegistryService.registerSkill(skill1);
 
         Optional<Skill> retrievedSkill = skillRegistryService.getSkill("fireball");
@@ -59,21 +61,21 @@ class SkillRegistryServiceTest {
 
     @Test
     void registerSkill_skillWithNullId_logsWarning() {
-        Skill skillWithNullId = new TestSkill(null, "Nameless Skill");
+        // Skill skillWithNullId = new TestSkill(mockPlugin, null, "Nameless Skill"); // Pass mockPlugin
         // This will actually throw NullPointerException in Skill constructor if ID is null.
         // If ID can be set to null post-construction (not possible with final field):
         // skillRegistryService.registerSkill(skillWithNullId);
         // verify(mockLogger).warning(contains("null skill or a skill with an invalid ID"));
 
         // Test the constructor directly for this case
-        assertThrows(NullPointerException.class, () -> new TestSkill(null, "Test"));
+        assertThrows(NullPointerException.class, () -> new TestSkill(mockPlugin, null, "Test")); // Pass mockPlugin
     }
 
 
     @Test
     void registerSkill_duplicateSkillId_overwritesAndLogsWarning() {
-        Skill skill1 = new TestSkill("heal", "Minor Heal");
-        Skill skill2 = new TestSkill("heal", "Greater Heal");
+        Skill skill1 = new TestSkill(mockPlugin, "heal", "Minor Heal"); // Pass mockPlugin
+        Skill skill2 = new TestSkill(mockPlugin, "heal", "Greater Heal"); // Pass mockPlugin
 
         skillRegistryService.registerSkill(skill1);
         skillRegistryService.registerSkill(skill2);
@@ -86,7 +88,7 @@ class SkillRegistryServiceTest {
 
     @Test
     void getSkill_existingSkillId_returnsSkill() {
-        Skill skill1 = new TestSkill("dash", "Quick Dash");
+        Skill skill1 = new TestSkill(mockPlugin, "dash", "Quick Dash"); // Pass mockPlugin
         skillRegistryService.registerSkill(skill1);
 
         Optional<Skill> retrieved = skillRegistryService.getSkill("dash");
@@ -113,8 +115,8 @@ class SkillRegistryServiceTest {
 
     @Test
     void getAllSkills_multipleSkills_returnsAllRegistered() {
-        Skill skill1 = new TestSkill("s1", "Skill One");
-        Skill skill2 = new TestSkill("s2", "Skill Two");
+        Skill skill1 = new TestSkill(mockPlugin, "s1", "Skill One"); // Pass mockPlugin
+        Skill skill2 = new TestSkill(mockPlugin, "s2", "Skill Two"); // Pass mockPlugin
         skillRegistryService.registerSkill(skill1);
         skillRegistryService.registerSkill(skill2);
 
@@ -126,15 +128,15 @@ class SkillRegistryServiceTest {
 
     @Test
     void getAllSkills_collectionIsUnmodifiable() {
-        Skill skill1 = new TestSkill("s1", "Skill One");
+        Skill skill1 = new TestSkill(mockPlugin, "s1", "Skill One"); // Pass mockPlugin
         skillRegistryService.registerSkill(skill1);
         Collection<Skill> allSkills = skillRegistryService.getAllSkills();
-        assertThrows(UnsupportedOperationException.class, () -> allSkills.add(new TestSkill("s3", "Bad Skill")));
+        assertThrows(UnsupportedOperationException.class, () -> allSkills.add(new TestSkill(mockPlugin, "s3", "Bad Skill"))); // Pass mockPlugin
     }
 
     @Test
     void unregisterSkill_existingSkill_removesAndReturnsTrue() {
-        Skill skill1 = new TestSkill("shield_bash", "Shield Bash");
+        Skill skill1 = new TestSkill(mockPlugin, "shield_bash", "Shield Bash"); // Pass mockPlugin
         skillRegistryService.registerSkill(skill1);
         assertTrue(skillRegistryService.getSkill("shield_bash").isPresent());
 

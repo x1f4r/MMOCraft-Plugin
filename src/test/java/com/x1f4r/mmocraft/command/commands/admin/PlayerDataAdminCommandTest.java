@@ -42,6 +42,7 @@ class PlayerDataAdminCommandTest {
     @Mock private CommandSender mockSender;
     @Mock private Player mockPlayer; // Target player
     @Mock private Server mockServer;
+    @Mock private org.bukkit.command.Command mockBukkitCommand; // Added
 
     @Captor private ArgumentCaptor<String> messageCaptor;
     @Captor private ArgumentCaptor<PlayerProfile> profileCaptor; // If needed for verifying saves
@@ -91,8 +92,14 @@ class PlayerDataAdminCommandTest {
     // --- VIEW Subcommand ---
     @Test
     void viewCmd_noPermission_sendsNoPermMessage() {
+        when(mockSender.hasPermission("mmocraft.admin.playerdata")).thenReturn(true); // Main command permission
         when(mockSender.hasPermission("mmocraft.admin.playerdata.view")).thenReturn(false);
-        command.getSubCommands().get("view").onCommand(mockSender, new String[]{"anyPlayer"});
+        // Assuming the subcommand itself checks its specific permission
+        // For this to work, the 'view' subcommand's CommandExecutable logic would need to check 'mmocraft.admin.playerdata.view'
+        // and send the message. AbstractPluginCommand only checks the main command permission before dispatch.
+        // This test might need adjustment based on how PlayerDataAdminCommand's 'view' subcommand handles its permission.
+        // For now, we'll assume it's implemented to send this specific message.
+        command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"view", "anyPlayer"});
         verify(mockSender).sendMessage(ChatColor.RED + "You don't have permission for this command.");
     }
 
@@ -136,7 +143,15 @@ class PlayerDataAdminCommandTest {
         // So we need mockPlayerDataService.getPlayerProfile to be set up.
 
         // This test will directly call the subcommand handler for simplicity, bypassing Bukkit command dispatch
-        command.getSubCommands().get("view").onCommand(mockSender, new String[]{testPlayerName});
+        // command.getSubCommands().get("view").onCommand(mockSender, new String[]{testPlayerName});
+        // Refactored to call the main command's onCommand
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(testPlayerName)).thenReturn(mockPlayer);
+            when(mockPlayer.getUniqueId()).thenReturn(testPlayerUUID); // Ensure mockPlayer has UUID
+            // mockPlayerDataService.getPlayerProfile already stubbed in setupPlayerOnline
+
+            command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"view", testPlayerName});
+        }
 
         verify(mockSender, atLeastOnce()).sendMessage(contains("Player Data: " + testPlayerName));
         verify(mockSender).sendMessage(contains("Level: " + testProfile.getLevel()));
@@ -151,7 +166,14 @@ class PlayerDataAdminCommandTest {
         String statName = "STRENGTH";
         String statValue = "25.5";
 
-        command.getSubCommands().get("setstat").onCommand(mockSender, new String[]{testPlayerName, statName, statValue});
+        // command.getSubCommands().get("setstat").onCommand(mockSender, new String[]{testPlayerName, statName, statValue});
+        // Refactored to call the main command's onCommand
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(testPlayerName)).thenReturn(mockPlayer);
+            // mockPlayerDataService.getPlayerProfile already stubbed in setupPlayerOnline
+
+            command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"setstat", testPlayerName, statName, statValue});
+        }
 
         verify(mockPlayerDataService.getPlayerProfile(testPlayerUUID)).setStatValue(Stat.STRENGTH, 25.5);
         verify(mockPlayerDataService).savePlayerProfile(testPlayerUUID);
@@ -162,18 +184,26 @@ class PlayerDataAdminCommandTest {
 
     @Test
     void setStatCmd_invalidStatName_sendsError() {
+        when(mockSender.hasPermission("mmocraft.admin.playerdata")).thenReturn(true);
         when(mockSender.hasPermission("mmocraft.admin.playerdata.setstat")).thenReturn(true);
         setupPlayerOnline(true);
-        command.getSubCommands().get("setstat").onCommand(mockSender, new String[]{testPlayerName, "INVALIDSTAT", "10"});
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(testPlayerName)).thenReturn(mockPlayer);
+            command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"setstat", testPlayerName, "INVALIDSTAT", "10"});
+        }
         verify(mockSender).sendMessage(contains("Invalid stat name: INVALIDSTAT"));
     }
 
     // --- SETLEVEL Subcommand ---
     @Test
     void setLevelCmd_validLevel_setsLevelAndResetsXP() {
-         when(mockSender.hasPermission("mmocraft.admin.playerdata.setlevel")).thenReturn(true);
+        when(mockSender.hasPermission("mmocraft.admin.playerdata")).thenReturn(true);
+        when(mockSender.hasPermission("mmocraft.admin.playerdata.setlevel")).thenReturn(true);
         setupPlayerOnline(true);
-        command.getSubCommands().get("setlevel").onCommand(mockSender, new String[]{testPlayerName, "10"});
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(testPlayerName)).thenReturn(mockPlayer);
+            command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"setlevel", testPlayerName, "10"});
+        }
 
         verify(testProfile).setLevel(10);
         verify(testProfile).setExperience(0);
@@ -183,19 +213,27 @@ class PlayerDataAdminCommandTest {
 
     @Test
     void setLevelCmd_levelTooHigh_sendsError() {
+        when(mockSender.hasPermission("mmocraft.admin.playerdata")).thenReturn(true);
         when(mockSender.hasPermission("mmocraft.admin.playerdata.setlevel")).thenReturn(true);
         setupPlayerOnline(true);
         String levelAboveMax = String.valueOf(ExperienceUtil.getMaxLevel() + 1);
-        command.getSubCommands().get("setlevel").onCommand(mockSender, new String[]{testPlayerName, levelAboveMax});
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(testPlayerName)).thenReturn(mockPlayer);
+            command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"setlevel", testPlayerName, levelAboveMax});
+        }
         verify(mockSender).sendMessage(contains("Level must be between " + ExperienceUtil.getMinLevel() + " and " + ExperienceUtil.getMaxLevel()));
     }
 
     // --- ADDXP Subcommand ---
     @Test
     void addXpCmd_validAmount_callsService() {
+        when(mockSender.hasPermission("mmocraft.admin.playerdata")).thenReturn(true);
         when(mockSender.hasPermission("mmocraft.admin.playerdata.addxp")).thenReturn(true);
         setupPlayerOnline(true);
-        command.getSubCommands().get("addxp").onCommand(mockSender, new String[]{testPlayerName, "500"});
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(testPlayerName)).thenReturn(mockPlayer);
+            command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"addxp", testPlayerName, "500"});
+        }
 
         verify(mockPlayerDataService).addExperience(testPlayerUUID, 500L);
         verify(mockPlayerDataService).savePlayerProfile(testPlayerUUID); // Assuming save after XP add
@@ -205,12 +243,16 @@ class PlayerDataAdminCommandTest {
     // --- ADDCURRENCY Subcommand ---
     @Test
     void addCurrencyCmd_validAmount_addsCurrency() {
+        when(mockSender.hasPermission("mmocraft.admin.playerdata")).thenReturn(true);
         when(mockSender.hasPermission("mmocraft.admin.playerdata.addcurrency")).thenReturn(true);
         setupPlayerOnline(true);
         long initialCurrency = testProfile.getCurrency();
         long amountToAdd = 1000;
 
-        command.getSubCommands().get("addcurrency").onCommand(mockSender, new String[]{testPlayerName, String.valueOf(amountToAdd)});
+        try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
+            mockedBukkit.when(() -> Bukkit.getPlayerExact(testPlayerName)).thenReturn(mockPlayer);
+            command.onCommand(mockSender, mockBukkitCommand, "playerdata", new String[]{"addcurrency", testPlayerName, String.valueOf(amountToAdd)});
+        }
 
         assertEquals(initialCurrency + amountToAdd, testProfile.getCurrency());
         verify(mockPlayerDataService).savePlayerProfile(testPlayerUUID);

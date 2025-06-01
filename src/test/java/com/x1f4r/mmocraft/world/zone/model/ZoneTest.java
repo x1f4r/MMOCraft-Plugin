@@ -90,9 +90,9 @@ class ZoneTest {
 
     @Test
     void getBooleanProperty_shouldHandleStringValues() {
-        Zone zoneWithTrueString = new Zone("z1", "w", 0,0,0,0,0,0, Map.of("isPvp", "true"));
-        Zone zoneWithFalseString = new Zone("z2", "w", 0,0,0,0,0,0, Map.of("isPvp", "false"));
-        Zone zoneWithNonBooleanString = new Zone("z3", "w", 0,0,0,0,0,0, Map.of("isPvp", "maybe"));
+        Zone zoneWithTrueString = new Zone("z1", "w", "test_world", 0,0,0,0,0,0, Map.of("isPvp", "true"));
+        Zone zoneWithFalseString = new Zone("z2", "w", "test_world", 0,0,0,0,0,0, Map.of("isPvp", "false"));
+        Zone zoneWithNonBooleanString = new Zone("z3", "w", "test_world", 0,0,0,0,0,0, Map.of("isPvp", "maybe"));
 
         assertTrue(zoneWithTrueString.getBooleanProperty("isPvp", false));
         assertFalse(zoneWithFalseString.getBooleanProperty("isPvp", true));
@@ -102,9 +102,9 @@ class ZoneTest {
 
     @Test
     void equalsAndHashCode_shouldBeBasedOnId() {
-        Zone zone1a = new Zone("zone1", "world", 0,0,0,10,10,10, Map.of("val", 1));
-        Zone zone1b = new Zone("zone1", "another_world", 1,1,1,5,5,5, Map.of("val", 2));
-        Zone zone2 = new Zone("zone2", "world", 0,0,0,10,10,10);
+        Zone zone1a = new Zone("zone1", "world_as_zonename", "test_world1", 0,0,0,10,10,10, Map.of("val", 1));
+        Zone zone1b = new Zone("zone1", "another_world_as_zonename", "test_world2", 1,1,1,5,5,5, Map.of("val", 2));
+        Zone zone2 = new Zone("zone2", "world", 0,0,0,10,10,10); // This one is correct (8-arg constructor)
 
         assertEquals(zone1a, zone1b);
         assertNotEquals(zone1a, zone2);

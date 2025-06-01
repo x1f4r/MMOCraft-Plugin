@@ -10,6 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.Location; // Added
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
@@ -49,7 +50,7 @@ class MinorHealSkillTest {
         lenient().when(mockCasterPlayer.getUniqueId()).thenReturn(casterUUID);
         lenient().when(mockCasterPlayer.getName()).thenReturn("Healer");
         lenient().when(mockCasterPlayer.getWorld()).thenReturn(mockWorld);
-        lenient().when(mockCasterProfile.getCurrentMana()).thenReturn(100.0); // Enough mana
+        lenient().when(mockCasterProfile.getCurrentMana()).thenReturn(100L); // Corrected to 100L
         lenient().when(mockCasterProfile.isSkillOnCooldown(minorHealSkill.getSkillId())).thenReturn(false); // Not on cooldown
 
         // Mock Bukkit.getPlayer()
@@ -66,7 +67,7 @@ class MinorHealSkillTest {
 
     @Test
     void canUse_notEnoughMana_returnsFalse() {
-        when(mockCasterProfile.getCurrentMana()).thenReturn(5.0); // Less than 15.0 cost
+        when(mockCasterProfile.getCurrentMana()).thenReturn(5L); // Corrected to 5L
         assertFalse(minorHealSkill.canUse(mockCasterProfile));
     }
 
@@ -99,7 +100,7 @@ class MinorHealSkillTest {
             verify(mockCasterPlayer).setHealth(20.0);
 
             verify(mockCasterPlayer).sendMessage(contains("healed yourself for 18.0 health"));
-            verify(mockCasterProfile).setCurrentMana(100.0 - minorHealSkill.getManaCost());
+            verify(mockCasterProfile).setCurrentMana((long)(100.0 - minorHealSkill.getManaCost())); // Corrected
             verify(mockWorld).playSound(any(Location.class), eq(Sound.ENTITY_PLAYER_LEVELUP), anyFloat(), anyFloat());
         }
     }

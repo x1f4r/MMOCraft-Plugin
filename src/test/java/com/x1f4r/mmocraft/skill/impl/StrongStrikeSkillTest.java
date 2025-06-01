@@ -8,9 +8,11 @@ import com.x1f4r.mmocraft.skill.model.Skill;
 import com.x1f4r.mmocraft.util.LoggingUtil;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location; // Added
 import org.bukkit.Server;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.entity.Entity; // Added
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +59,7 @@ class StrongStrikeSkillTest {
         lenient().when(mockCasterPlayer.getUniqueId()).thenReturn(casterUUID);
         lenient().when(mockCasterPlayer.getName()).thenReturn("CasterP");
         lenient().when(mockCasterPlayer.getWorld()).thenReturn(mockWorld); // For sound
-        lenient().when(mockCasterProfile.getCurrentMana()).thenReturn(100.0); // Enough mana
+        lenient().when(mockCasterProfile.getCurrentMana()).thenReturn(100L); // Corrected to 100L
         lenient().when(mockCasterProfile.isSkillOnCooldown(strongStrikeSkill.getSkillId())).thenReturn(false); // Not on cooldown
 
         // Target setup
@@ -79,7 +81,7 @@ class StrongStrikeSkillTest {
 
     @Test
     void canUse_notEnoughMana_returnsFalse() {
-        when(mockCasterProfile.getCurrentMana()).thenReturn(5.0); // Less than 10.0 cost
+        when(mockCasterProfile.getCurrentMana()).thenReturn(5L); // Corrected to 5L
         assertFalse(strongStrikeSkill.canUse(mockCasterProfile));
     }
 
@@ -114,7 +116,7 @@ class StrongStrikeSkillTest {
 
             verify(mockTargetEntity).damage(eq(25.5), eq(mockCasterPlayer));
             verify(mockCasterPlayer).sendMessage(contains("hit TargetMob with Strong Strike for 25.50 damage!"));
-            verify(mockCasterProfile).setCurrentMana(100.0 - strongStrikeSkill.getManaCost());
+            verify(mockCasterProfile).setCurrentMana((long)(100.0 - strongStrikeSkill.getManaCost())); // Corrected
             verify(mockWorld).playSound(any(Location.class), eq(Sound.ENTITY_PLAYER_ATTACK_STRONG), anyFloat(), anyFloat());
         }
     }
@@ -142,7 +144,7 @@ class StrongStrikeSkillTest {
             mockedBukkit.when(() -> Bukkit.getPlayer(casterUUID)).thenReturn(mockCasterPlayer);
             mockedBukkit.when(() -> Bukkit.getPlayer(targetPlayerUUID)).thenReturn(mockTargetPlayer); // If skill needs it
 
-            when(plugin.getPlayerDataService().getPlayerProfile(targetPlayerUUID)).thenReturn(mockVictimProfile);
+            when(mockPlugin.getPlayerDataService().getPlayerProfile(targetPlayerUUID)).thenReturn(mockVictimProfile); // Corrected plugin to mockPlugin
 
             when(mockCasterProfile.getStatValue(Stat.STRENGTH)).thenReturn(20.0); // Base: 5 + 20*1.2 = 29. Multi: 29*1.5 = 43.5
             when(mockCasterProfile.getCriticalHitChance()).thenReturn(0.0);
@@ -164,7 +166,7 @@ class StrongStrikeSkillTest {
             mockedBukkit.when(() -> Bukkit.getPlayer(casterUUID)).thenReturn(mockCasterPlayer);
             mockedBukkit.when(() -> Bukkit.getPlayer(targetPlayerUUID)).thenReturn(mockTargetPlayer); // If skill needs it for messages
 
-            when(plugin.getPlayerDataService().getPlayerProfile(targetPlayerUUID)).thenReturn(mockVictimProfile);
+            when(mockPlugin.getPlayerDataService().getPlayerProfile(targetPlayerUUID)).thenReturn(mockVictimProfile); // Corrected plugin to mockPlugin
             when(mockVictimProfile.getEvasionChance()).thenReturn(1.0); // Guaranteed evasion
 
             strongStrikeSkill.execute(mockCasterProfile, mockTargetPlayer, null);

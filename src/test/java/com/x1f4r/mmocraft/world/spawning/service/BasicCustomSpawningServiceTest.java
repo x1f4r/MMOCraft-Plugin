@@ -49,7 +49,7 @@ class BasicCustomSpawningServiceTest {
 
     @BeforeEach
     void setUp() {
-        spawningService = new BasicCustomSpawningService(mockPlugin, mockLogger, mockMobStatProvider, lootService, mockCustomItemRegistry);
+        spawningService = new BasicCustomSpawningService(mockPlugin, mockLogger, mockMobStatProvider, mockLootService, mockCustomItemRegistry); // Corrected lootService to mockLootService
 
         mockedBukkit = mockStatic(Bukkit.class);
         mockedBukkit.when(Bukkit::getServer).thenReturn(mockServer);

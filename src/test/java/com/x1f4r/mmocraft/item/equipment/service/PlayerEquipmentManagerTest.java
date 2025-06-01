@@ -107,7 +107,7 @@ class PlayerEquipmentManagerTest {
         when(mockPlayerInventory.getItemInMainHand()).thenReturn(customSwordStack);
         when(mockCustomItemRegistry.getCustomItem(customSwordStack)).thenReturn(Optional.of(customSword));
         // Other slots are empty/vanilla
-        when(mockCustomItemRegistry.getCustomItem(argThat(item -> item != customSwordStack))).thenReturn(Optional.empty());
+        when(mockCustomItemRegistry.getCustomItem(argThat((ItemStack item) -> item != customSwordStack))).thenReturn(Optional.empty()); // Typed lambda
 
 
         equipmentManager.updateEquipmentStats(mockPlayer);
@@ -140,7 +140,7 @@ class PlayerEquipmentManagerTest {
         when(mockCustomItemRegistry.getCustomItem(customHelmetStack)).thenReturn(Optional.of(customHelmet));
         when(mockCustomItemRegistry.getCustomItem(customChestStack)).thenReturn(Optional.of(customChest));
         // Other slots are empty/vanilla
-        when(mockCustomItemRegistry.getCustomItem(argThat(item -> item != customHelmetStack && item != customChestStack)))
+        when(mockCustomItemRegistry.getCustomItem(argThat((ItemStack item) -> item != customHelmetStack && item != customChestStack))) // Typed lambda
             .thenReturn(Optional.empty());
 
         equipmentManager.updateEquipmentStats(mockPlayer);
@@ -163,7 +163,7 @@ class PlayerEquipmentManagerTest {
 
         when(mockPlayerInventory.getItemInMainHand()).thenReturn(customGenericStack);
         when(mockCustomItemRegistry.getCustomItem(customGenericStack)).thenReturn(Optional.of(customGenericItem));
-        when(mockCustomItemRegistry.getCustomItem(argThat(item -> item != customGenericStack))).thenReturn(Optional.empty());
+        when(mockCustomItemRegistry.getCustomItem(argThat((ItemStack item) -> item != customGenericStack))).thenReturn(Optional.empty()); // Typed lambda
 
         equipmentManager.updateEquipmentStats(mockPlayer);
 

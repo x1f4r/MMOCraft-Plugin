@@ -212,7 +212,7 @@ class PlayerDataServiceTest {
     }
 
     @Test
-    void savePlayerProfile_profileNotCached_shouldLogWarning() throws ExecutionException, InterruptedException {
+    void savePlayerProfile_profileNotCached_shouldLogWarning() throws ExecutionException, InterruptedException, SQLException { // Added SQLException
         playerDataService.savePlayerProfile(UUID.randomUUID()).get(); // Non-cached UUID
         verify(mockLogger).warning(contains("Attempted to save profile for UUID"));
         verify(mockPersistenceService, never()).executeUpdate(anyString(), any());

@@ -18,8 +18,10 @@ dependencies {
     // Testing dependencies
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.2") // Added for parameterized tests
     testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("org.mockito:mockito-junit-jupiter:5.11.0") // For @ExtendWith(MockitoExtension.class)
+    testImplementation("org.purpurmc.purpur:purpur-api:1.21.5-R0.1-SNAPSHOT") // Added for test compilation
 }
 
 java {

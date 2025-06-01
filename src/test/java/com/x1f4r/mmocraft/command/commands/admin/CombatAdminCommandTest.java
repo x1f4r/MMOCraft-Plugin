@@ -43,6 +43,7 @@ class CombatAdminCommandTest {
     @Mock private Player mockAttackerPlayer;
     @Mock private Player mockVictimPlayer;
     @Mock private Server mockServer; // For Bukkit.getPlayerExact
+    @Mock private org.bukkit.command.Command mockBukkitCommand; // Added
 
     @Captor private ArgumentCaptor<String> messageCaptor;
 
@@ -72,15 +73,18 @@ class CombatAdminCommandTest {
     // --- TESTDAMAGE Subcommand ---
     @Test
     void testDamageCmd_noPermission_sendsNoPermMessage() {
+        when(mockSender.hasPermission("mmocraft.admin.combat")).thenReturn(true); // Main command permission
         when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(false);
-        combatAdminCommand.getSubCommands().get("testdamage").onCommand(mockSender, new String[]{"AttackerP", "VictimP"});
+        // Assuming the subcommand itself checks its specific permission.
+        combatAdminCommand.onCommand(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "AttackerP", "VictimP"});
         verify(mockSender).sendMessage(ChatColor.RED + "You don't have permission for this command.");
     }
 
     @Test
     void testDamageCmd_notEnoughArgs_sendsUsage() {
+        when(mockSender.hasPermission("mmocraft.admin.combat")).thenReturn(true);
         when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(true);
-        combatAdminCommand.getSubCommands().get("testdamage").onCommand(mockSender, new String[]{"AttackerP"});
+        combatAdminCommand.onCommand(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "AttackerP"});
         verify(mockSender).sendMessage(ChatColor.RED + "Usage: /mmocadm combat testdamage <attackerPlayerName> <victimPlayerName> [weaponMaterialName]");
     }
 
@@ -89,9 +93,10 @@ class CombatAdminCommandTest {
         try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
             mockedBukkit.when(() -> Bukkit.getPlayerExact("OfflineAttacker")).thenReturn(null);
             mockedBukkit.when(() -> Bukkit.getPlayerExact("VictimP")).thenReturn(mockVictimPlayer);
+            when(mockSender.hasPermission("mmocraft.admin.combat")).thenReturn(true);
             when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(true);
 
-            combatAdminCommand.getSubCommands().get("testdamage").onCommand(mockSender, new String[]{"OfflineAttacker", "VictimP"});
+            combatAdminCommand.onCommand(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "OfflineAttacker", "VictimP"});
             verify(mockSender).sendMessage(ChatColor.RED + "Attacker player 'OfflineAttacker' not found or not online.");
         }
     }
@@ -101,9 +106,10 @@ class CombatAdminCommandTest {
          try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
             mockedBukkit.when(() -> Bukkit.getPlayerExact("AttackerP")).thenReturn(mockAttackerPlayer);
             mockedBukkit.when(() -> Bukkit.getPlayerExact("OfflineVictim")).thenReturn(null);
+            when(mockSender.hasPermission("mmocraft.admin.combat")).thenReturn(true);
             when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(true);
 
-            combatAdminCommand.getSubCommands().get("testdamage").onCommand(mockSender, new String[]{"AttackerP", "OfflineVictim"});
+            combatAdminCommand.onCommand(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "AttackerP", "OfflineVictim"});
             verify(mockSender).sendMessage(ChatColor.RED + "Victim player 'OfflineVictim' not found or not online.");
         }
     }
@@ -113,9 +119,10 @@ class CombatAdminCommandTest {
         try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
             mockedBukkit.when(() -> Bukkit.getPlayerExact("AttackerP")).thenReturn(mockAttackerPlayer);
             mockedBukkit.when(() -> Bukkit.getPlayerExact("VictimP")).thenReturn(mockVictimPlayer);
+            when(mockSender.hasPermission("mmocraft.admin.combat")).thenReturn(true);
             when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(true);
 
-            combatAdminCommand.getSubCommands().get("testdamage").onCommand(mockSender, new String[]{"AttackerP", "VictimP", "INVALID_STONE"});
+            combatAdminCommand.onCommand(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "AttackerP", "VictimP", "INVALID_STONE"});
             verify(mockSender).sendMessage(ChatColor.RED + "Invalid weapon material: INVALID_STONE");
         }
     }
@@ -125,6 +132,7 @@ class CombatAdminCommandTest {
         try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
             mockedBukkit.when(() -> Bukkit.getPlayerExact("AttackerP")).thenReturn(mockAttackerPlayer);
             mockedBukkit.when(() -> Bukkit.getPlayerExact("VictimP")).thenReturn(mockVictimPlayer);
+            when(mockSender.hasPermission("mmocraft.admin.combat")).thenReturn(true);
             when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(true);
 
             DamageInstance fakeInstance = new DamageInstance(
@@ -135,7 +143,7 @@ class CombatAdminCommandTest {
                 eq(mockAttackerPlayer), eq(mockVictimPlayer), anyDouble(), eq(DamageType.PHYSICAL))
             ).thenReturn(fakeInstance);
 
-            combatAdminCommand.getSubCommands().get("testdamage").onCommand(mockSender, new String[]{"AttackerP", "VictimP", "DIAMOND_SWORD"});
+            combatAdminCommand.onCommand(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "AttackerP", "VictimP", "DIAMOND_SWORD"});
 
             verify(mockDamageCalcService).calculateDamage(mockAttackerPlayer, mockVictimPlayer, 7.0, DamageType.PHYSICAL);
             verify(mockSender, times(8)).sendMessage(anyString()); // 1 title + 7 data lines
@@ -150,6 +158,7 @@ class CombatAdminCommandTest {
         try (MockedStatic<Bukkit> mockedBukkit = mockStatic(Bukkit.class)) {
             mockedBukkit.when(() -> Bukkit.getPlayerExact("AttackerP")).thenReturn(mockAttackerPlayer);
             mockedBukkit.when(() -> Bukkit.getPlayerExact("VictimP")).thenReturn(mockVictimPlayer);
+            when(mockSender.hasPermission("mmocraft.admin.combat")).thenReturn(true);
             when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(true);
 
             DamageInstance fakeInstance = new DamageInstance(
@@ -161,7 +170,7 @@ class CombatAdminCommandTest {
                 eq(mockAttackerPlayer), eq(mockVictimPlayer), eq(1.0), eq(DamageType.PHYSICAL))
             ).thenReturn(fakeInstance);
 
-            combatAdminCommand.getSubCommands().get("testdamage").onCommand(mockSender, new String[]{"AttackerP", "VictimP"}); // No weapon specified
+            combatAdminCommand.onCommand(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "AttackerP", "VictimP"}); // No weapon specified
 
             verify(mockDamageCalcService).calculateDamage(mockAttackerPlayer, mockVictimPlayer, 1.0, DamageType.PHYSICAL);
             verify(mockSender).sendMessage(contains("Weapon Base: " + String.format("%.2f", 1.0) + " (&7Simulated AIR&7)"));
@@ -171,8 +180,8 @@ class CombatAdminCommandTest {
 
     @Test
     void tabComplete_testdamage_weaponMaterial_suggestsMaterials() {
-        when(mockSender.hasPermission(CombatAdminCommand.PERM_COMBAT_TESTDAMAGE)).thenReturn(true);
-        List<String> completions = combatAdminCommand.onTabComplete(mockSender, new String[]{"combat", "testdamage", "AttackerP", "VictimP", "DIA"});
+        when(mockSender.hasPermission("mmocraft.admin.combat.testdamage")).thenReturn(true); // Used string literal
+        List<String> completions = combatAdminCommand.onTabComplete(mockSender, mockBukkitCommand, "combatadmin", new String[]{"testdamage", "AttackerP", "VictimP", "DIA"});
         assertTrue(completions.contains("DIAMOND_SWORD"));
         assertTrue(completions.contains("DIAMOND_AXE"));
         assertFalse(completions.contains("IRON_SWORD"));

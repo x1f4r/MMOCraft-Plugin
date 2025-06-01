@@ -8,7 +8,9 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.NamespacedKey; // For NBTUtil interaction verification
+import org.bukkit.persistence.PersistentDataContainer; // Added
 import org.bukkit.persistence.PersistentDataType; // For NBTUtil interaction verification
+import com.x1f4r.mmocraft.util.StringUtil; // Added
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

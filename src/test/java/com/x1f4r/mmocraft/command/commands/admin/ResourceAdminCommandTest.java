@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor; // Added
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -106,13 +107,13 @@ class ResourceAdminCommandTest {
 
     @Test
     void onCommand_noArgs_sendsHelp() {
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{});
+        resourceAdminCommand.onCommand(mockSender, new String[]{}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("--- Resource Admin Commands ---"));
     }
 
     @Test
     void onCommand_unknownSubCommand_sendsHelp() {
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"unknown"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"unknown"}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("Unknown subcommand 'unknown'"));
         verify(mockSender).sendMessage(contains("--- Resource Admin Commands ---"));
     }
@@ -121,7 +122,7 @@ class ResourceAdminCommandTest {
     @Test
     void placeCommand_validArgsWithCoords_callsPlaceNewNode() {
         mockBukkitStatic(); // Ensure Bukkit.getWorld is mocked for this call path
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"place", "test_stone", "test_world", "10", "20", "30"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"place", "test_stone", "test_world", "10", "20", "30"}); // Changed to onCommand
         ArgumentCaptor<Location> locCaptor = ArgumentCaptor.forClass(Location.class);
         verify(mockActiveNodeManager).placeNewNode(locCaptor.capture(), eq("test_stone"));
         assertEquals("test_world", locCaptor.getValue().getWorld().getName());
@@ -131,14 +132,14 @@ class ResourceAdminCommandTest {
 
     @Test
     void placeCommand_playerTargetsBlock_callsPlaceNewNode() {
-        resourceAdminCommand.onCommandLogic(mockPlayer, new String[]{"place", "test_stone"});
+        resourceAdminCommand.onCommand(mockPlayer, new String[]{"place", "test_stone"}); // Changed to onCommand
         verify(mockActiveNodeManager).placeNewNode(eq(mockBlock.getLocation()), eq("test_stone"));
         verify(mockPlayer).sendMessage(contains("Placed resource node 'test_stone'"));
     }
 
     @Test
     void placeCommand_invalidNodeType_sendsError() {
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"place", "invalid_type", "test_world", "10", "20", "30"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"place", "invalid_type", "test_world", "10", "20", "30"}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("Invalid ResourceNodeType ID: 'invalid_type'"));
         verify(mockActiveNodeManager, never()).placeNewNode(any(), anyString());
     }
@@ -147,32 +148,32 @@ class ResourceAdminCommandTest {
     void placeCommand_invalidWorld_sendsError() {
         mockBukkitStatic();
         when(Bukkit.getWorld("bad_world")).thenReturn(null); // Specific mock for this test
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"place", "test_stone", "bad_world", "10", "20", "30"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"place", "test_stone", "bad_world", "10", "20", "30"}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("World 'bad_world' not found."));
     }
 
     @Test
     void placeCommand_invalidCoords_sendsError() {
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"place", "test_stone", "test_world", "ten", "20", "30"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"place", "test_stone", "test_world", "ten", "20", "30"}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("Invalid coordinates."));
     }
 
     @Test
     void placeCommand_consoleTargetsBlock_sendsError() {
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"place", "test_stone"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"place", "test_stone"}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("Console must specify world and coordinates."));
     }
 
     @Test
     void placeCommand_playerNoTarget_sendsError() {
         when(mockPlayer.getTargetBlockExact(5)).thenReturn(null);
-        resourceAdminCommand.onCommandLogic(mockPlayer, new String[]{"place", "test_stone"});
+        resourceAdminCommand.onCommand(mockPlayer, new String[]{"place", "test_stone"}); // Changed to onCommand
         verify(mockPlayer).sendMessage(contains("You are not looking at a block"));
     }
 
     @Test
     void placeCommand_notEnoughArgs_sendsError() {
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"place"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"place"}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("Usage: /mmocadm resource place <nodeTypeId>"));
     }
 
@@ -183,7 +184,7 @@ class ResourceAdminCommandTest {
         when(mockActiveNodeManager.getActiveNode(mockBlock.getLocation())).thenReturn(Optional.of(activeNode));
         when(mockActiveNodeManager.removeNode(mockBlock.getLocation())).thenReturn(true);
 
-        resourceAdminCommand.onCommandLogic(mockPlayer, new String[]{"remove"});
+        resourceAdminCommand.onCommand(mockPlayer, new String[]{"remove"}); // Changed to onCommand
         verify(mockActiveNodeManager).removeNode(mockBlock.getLocation());
         verify(mockPlayer).sendMessage(contains("Successfully removed resource node"));
     }
@@ -191,14 +192,14 @@ class ResourceAdminCommandTest {
     @Test
     void removeCommand_playerTargetsNonNode_sendsError() {
         when(mockActiveNodeManager.getActiveNode(mockBlock.getLocation())).thenReturn(Optional.empty());
-        resourceAdminCommand.onCommandLogic(mockPlayer, new String[]{"remove"});
+        resourceAdminCommand.onCommand(mockPlayer, new String[]{"remove"}); // Changed to onCommand
         verify(mockPlayer).sendMessage(contains("No active resource node found"));
         verify(mockActiveNodeManager, never()).removeNode(any());
     }
 
     @Test
     void removeCommand_console_sendsError() {
-        resourceAdminCommand.onCommandLogic(mockSender, new String[]{"remove"});
+        resourceAdminCommand.onCommand(mockSender, new String[]{"remove"}); // Changed to onCommand
         verify(mockSender).sendMessage(contains("This command must be run by a player"));
     }
 
@@ -210,8 +211,8 @@ class ResourceAdminCommandTest {
         when(mockActiveNodeManager.getActiveNode(mockBlock.getLocation())).thenReturn(Optional.of(activeNode));
         when(mockNodeRegistryService.getNodeType("test_stone")).thenReturn(Optional.of(testNodeType));
 
-        resourceAdminCommand.onCommandLogic(mockPlayer, new String[]{"info"});
-        verify(mockPlayer, times(atLeast(1))).sendMessage(anyString()); // Check multiple info lines
+        resourceAdminCommand.onCommand(mockPlayer, new String[]{"info"}); // Changed to onCommand
+        verify(mockPlayer, atLeast(1)).sendMessage(anyString()); // Corrected Mockito verification
         verify(mockPlayer).sendMessage(contains("Node Type ID: &ftest_stone"));
         verify(mockPlayer).sendMessage(contains("Is Depleted: &ffalse"));
     }
@@ -224,7 +225,7 @@ class ResourceAdminCommandTest {
         when(mockActiveNodeManager.getActiveNode(mockBlock.getLocation())).thenReturn(Optional.of(activeNode));
         when(mockNodeRegistryService.getNodeType("test_stone")).thenReturn(Optional.of(testNodeType));
 
-        resourceAdminCommand.onCommandLogic(mockPlayer, new String[]{"info"});
+        resourceAdminCommand.onCommand(mockPlayer, new String[]{"info"}); // Changed to onCommand
         verify(mockPlayer).sendMessage(contains("Is Depleted: &ftrue"));
         verify(mockPlayer).sendMessage(contains("Respawn In: &f")); // Check if it attempts to show respawn time
     }
@@ -233,20 +234,20 @@ class ResourceAdminCommandTest {
     // --- Tab Completion Tests ---
     @Test
     void tabComplete_firstArg_suggestsSubCommands() {
-        List<String> completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{""});
+        List<String> completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{""}); // Changed to onTabComplete
         assertTrue(completions.containsAll(List.of("place", "remove", "info")));
 
-        completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{"pl"});
+        completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{"pl"}); // Changed to onTabComplete
         assertTrue(completions.contains("place"));
         assertEquals(1, completions.size());
     }
 
     @Test
     void tabComplete_placeSecondArg_suggestsNodeTypeIds() {
-        List<String> completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{"place", ""});
+        List<String> completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{"place", ""}); // Changed to onTabComplete
         assertTrue(completions.contains("test_stone"));
 
-        completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{"place", "te"});
+        completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{"place", "te"}); // Changed to onTabComplete
         assertTrue(completions.contains("test_stone"));
     }
 
@@ -255,19 +256,19 @@ class ResourceAdminCommandTest {
         mockBukkitStatic(); // For Bukkit.getWorlds()
         when(mockServer.getWorlds()).thenReturn(List.of(mockWorld)); // Mock Bukkit.getWorlds()
 
-        List<String> completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{"place", "test_stone", ""});
+        List<String> completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{"place", "test_stone", ""}); // Changed to onTabComplete
         assertTrue(completions.contains("test_world"));
 
-        completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{"place", "test_stone", "te"});
+        completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{"place", "test_stone", "te"}); // Changed to onTabComplete
         assertTrue(completions.contains("test_world"));
     }
 
     @Test
     void tabComplete_otherSubCommands_returnsEmpty() {
-        List<String> completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{"remove", ""});
+        List<String> completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{"remove", ""}); // Changed to onTabComplete
         assertTrue(completions.isEmpty());
 
-        completions = resourceAdminCommand.onTabCompleteLogic(mockSender, new String[]{"info", ""});
+        completions = resourceAdminCommand.onTabComplete(mockSender, new String[]{"info", ""}); // Changed to onTabComplete
         assertTrue(completions.isEmpty());
     }
 

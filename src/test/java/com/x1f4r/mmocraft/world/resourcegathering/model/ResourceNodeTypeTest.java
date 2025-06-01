@@ -3,6 +3,7 @@ package com.x1f4r.mmocraft.world.resourcegathering.model;
 import org.bukkit.Material;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+import java.util.Collections; // Added
 import java.util.Set;
 
 class ResourceNodeTypeTest {

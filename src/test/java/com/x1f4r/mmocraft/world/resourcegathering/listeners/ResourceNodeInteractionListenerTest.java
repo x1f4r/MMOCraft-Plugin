@@ -81,7 +81,7 @@ class ResourceNodeInteractionListenerTest {
         ));
         // Mock the generateLoot to return a concrete ItemStack for testing drops
         ItemStack cobbleDrop = new ItemStack(Material.COBBLESTONE, 1);
-        when(testLootTable.generateLoot()).thenReturn(List.of(cobbleDrop));
+        when(testLootTable.generateLoot(mockCustomItemRegistry, mockPlugin)).thenReturn(List.of(cobbleDrop)); // Corrected
 
 
         listener = new ResourceNodeInteractionListener(mockPlugin, mockActiveNodeManager, mockNodeRegistryService,
@@ -152,7 +152,7 @@ class ResourceNodeInteractionListenerTest {
         ResourceNodeType handBreakableType = new ResourceNodeType("hand_break", Material.SAND, 1.0, Collections.emptySet(), "sand_loot", 10);
         ActiveResourceNode handBreakableNode = new ActiveResourceNode(testLocation, "hand_break");
         LootTable sandLootTable = new LootTable("sand_loot", List.of(new com.x1f4r.mmocraft.loot.model.LootTableEntry("SAND", 1.0, 1, 1)));
-        when(sandLootTable.generateLoot()).thenReturn(List.of(new ItemStack(Material.SAND)));
+        when(sandLootTable.generateLoot(mockCustomItemRegistry, mockPlugin)).thenReturn(List.of(new ItemStack(Material.SAND))); // Corrected
 
 
         when(mockActiveNodeManager.getActiveNode(testLocation)).thenReturn(Optional.of(handBreakableNode));

@@ -26,6 +26,8 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.UUID; // Added import
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -78,7 +80,17 @@ class PlayerCombatListenerTest {
     @Test
     void onEntityDamageByEntity_playerAttacksWithDiamondSword_usesCorrectBaseDamage() {
         setupPlayerAttackerWithWeapon(Material.DIAMOND_SWORD);
-        DamageInstance fakeDamageInstance = new DamageInstance(mockAttackerPlayer, mockVictimLivingEntity, 7.0, DamageType.PHYSICAL, false,false, "", 5.0);
+        // Ensure UUIDs are available from mocks if not already
+        lenient().when(mockAttackerPlayer.getUniqueId()).thenReturn(UUID.randomUUID());
+        lenient().when(mockVictimLivingEntity.getUniqueId()).thenReturn(UUID.randomUUID());
+        DamageInstance fakeDamageInstance = new DamageInstance(
+                mockAttackerPlayer, mockVictimLivingEntity,
+                mockAttackerPlayer.getUniqueId(), mockVictimLivingEntity.getUniqueId(),
+                null, null, // attackerProfile, victimProfile
+                7.0, DamageType.PHYSICAL, // baseDamage, type
+                false, false, // criticalHit, evaded
+                "", 5.0 // mitigationDetails, finalDamage
+        );
         when(mockDamageCalcService.calculateDamage(eq(mockAttackerPlayer), eq(mockVictimLivingEntity), baseDamageCaptor.capture(), damageTypeCaptor.capture()))
             .thenReturn(fakeDamageInstance);
 
@@ -93,7 +105,13 @@ class PlayerCombatListenerTest {
     @Test
     void onEntityDamageByEntity_playerAttacksUnarmed_usesCorrectBaseDamage() {
         setupPlayerAttackerWithWeapon(Material.AIR); // Unarmed or empty hand
-        DamageInstance fakeDamageInstance = new DamageInstance(mockAttackerPlayer, mockVictimLivingEntity, 1.0, DamageType.PHYSICAL, false,false, "", 0.5);
+        lenient().when(mockAttackerPlayer.getUniqueId()).thenReturn(UUID.randomUUID());
+        lenient().when(mockVictimLivingEntity.getUniqueId()).thenReturn(UUID.randomUUID());
+        DamageInstance fakeDamageInstance = new DamageInstance(
+                mockAttackerPlayer, mockVictimLivingEntity,
+                mockAttackerPlayer.getUniqueId(), mockVictimLivingEntity.getUniqueId(),
+                null, null, 1.0, DamageType.PHYSICAL, false, false, "", 0.5
+        );
         when(mockDamageCalcService.calculateDamage(any(Entity.class), any(Entity.class), baseDamageCaptor.capture(), any(DamageType.class)))
             .thenReturn(fakeDamageInstance);
 
@@ -111,8 +129,13 @@ class PlayerCombatListenerTest {
         // when(mockEvent.getDamage()).thenReturn(3.0); // This would be Bukkit's original, we override with MobStatProvider
 
         when(mockMobStatProvider.getBaseAttackDamage(EntityType.ZOMBIE)).thenReturn(5.0); // Custom base damage
-
-        DamageInstance fakeDamageInstance = new DamageInstance(mobAttacker, mockVictimLivingEntity, 5.0, DamageType.PHYSICAL, false,false, "", 4.0);
+        lenient().when(mobAttacker.getUniqueId()).thenReturn(UUID.randomUUID()); // mobAttacker is local mock
+        lenient().when(mockVictimLivingEntity.getUniqueId()).thenReturn(UUID.randomUUID());
+        DamageInstance fakeDamageInstance = new DamageInstance(
+                mobAttacker, mockVictimLivingEntity,
+                mobAttacker.getUniqueId(), mockVictimLivingEntity.getUniqueId(),
+                null, null, 5.0, DamageType.PHYSICAL, false, false, "", 4.0
+        );
         when(mockDamageCalcService.calculateDamage(eq(mobAttacker), eq(mockVictimLivingEntity), baseDamageCaptor.capture(), any(DamageType.class)))
             .thenReturn(fakeDamageInstance);
 
@@ -127,8 +150,13 @@ class PlayerCombatListenerTest {
         when(mockEvent.getDamager()).thenReturn(mockArrow);
         when(mockArrow.getShooter()).thenReturn(mockAttackerPlayer);
         when(mockEvent.getDamage()).thenReturn(8.5); // Bukkit's calculated arrow damage
-
-        DamageInstance fakeDamageInstance = new DamageInstance(mockAttackerPlayer, mockVictimLivingEntity, 8.5, DamageType.PHYSICAL, false,false,"", 6.0);
+        lenient().when(mockAttackerPlayer.getUniqueId()).thenReturn(UUID.randomUUID());
+        lenient().when(mockVictimLivingEntity.getUniqueId()).thenReturn(UUID.randomUUID());
+        DamageInstance fakeDamageInstance = new DamageInstance(
+                mockAttackerPlayer, mockVictimLivingEntity,
+                mockAttackerPlayer.getUniqueId(), mockVictimLivingEntity.getUniqueId(),
+                null, null, 8.5, DamageType.PHYSICAL, false, false, "", 6.0
+        );
         when(mockDamageCalcService.calculateDamage(eq(mockAttackerPlayer), eq(mockVictimLivingEntity), baseDamageCaptor.capture(), any(DamageType.class)))
             .thenReturn(fakeDamageInstance);
 
@@ -161,8 +189,12 @@ class PlayerCombatListenerTest {
     @Test
     void onEntityDamageByEntity_evadedAttack_logsEvasionAndSetsZeroDamage() {
         setupPlayerAttackerWithWeapon(Material.IRON_SWORD);
+        lenient().when(mockAttackerPlayer.getUniqueId()).thenReturn(UUID.randomUUID());
+        lenient().when(mockVictimLivingEntity.getUniqueId()).thenReturn(UUID.randomUUID());
         DamageInstance evadedInstance = new DamageInstance(
-            mockAttackerPlayer, mockVictimLivingEntity, 6.0, DamageType.PHYSICAL,
+            mockAttackerPlayer, mockVictimLivingEntity,
+            mockAttackerPlayer.getUniqueId(), mockVictimLivingEntity.getUniqueId(),
+            null, null, 6.0, DamageType.PHYSICAL,
             false, true, "Evaded.", 0.0 // Evaded = true, finalDamage = 0
         );
         when(mockDamageCalcService.calculateDamage(any(), any(), anyDouble(), any())).thenReturn(evadedInstance);
@@ -185,12 +217,17 @@ class PlayerCombatListenerTest {
         PlayerProfile mockVictimPlayerProfile = mock(PlayerProfile.class);
 
         when(mockEvent.getEntity()).thenReturn(mockVictimAsPlayer); // Override general victim with Player victim
-        when(mockVictimAsPlayer.getUniqueId()).thenReturn(UUID.randomUUID());
+        // UUID for mockVictimAsPlayer is stubbed in its mock creation if needed, or here explicitly
+        lenient().when(mockVictimAsPlayer.getUniqueId()).thenReturn(UUID.randomUUID());
+        lenient().when(mockAttackerPlayer.getUniqueId()).thenReturn(UUID.randomUUID());
         when(mockPlayerDataService.getPlayerProfile(mockVictimAsPlayer.getUniqueId())).thenReturn(mockVictimPlayerProfile);
 
 
         DamageInstance damageDone = new DamageInstance(
-            mockAttackerPlayer, mockVictimAsPlayer, 5.0, DamageType.PHYSICAL,
+            mockAttackerPlayer, mockVictimAsPlayer,
+            mockAttackerPlayer.getUniqueId(), mockVictimAsPlayer.getUniqueId(),
+            null, mockVictimPlayerProfile, // victimProfile is available
+            5.0, DamageType.PHYSICAL,
             false, false, "", 3.5 // Final damage after calculations
         );
         when(mockDamageCalcService.calculateDamage(any(), eq(mockVictimAsPlayer), anyDouble(), any())).thenReturn(damageDone);

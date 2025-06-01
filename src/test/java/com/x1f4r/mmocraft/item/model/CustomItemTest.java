@@ -78,12 +78,26 @@ class CustomItemTest {
         // Implicitly uses getRarity() { return ItemRarity.COMMON; }
     }
 
+    // Added stub class for TestCustomItemWithRarity
+    private static class TestCustomItemWithRarity extends CustomItem {
+        private final ItemRarity rarityToTest;
+        public TestCustomItemWithRarity(MMOCraftPlugin plugin, ItemRarity rarity) {
+            super(plugin);
+            this.rarityToTest = rarity;
+        }
+        @Override public String getItemId() { return "rarity_test_item_" + rarityToTest.name().toLowerCase(); }
+        @Override public Material getMaterial() { return Material.AMETHYST_SHARD; }
+        @Override public String getDisplayName() { return rarityToTest.name() + " Test Item"; }
+        @Override public List<String> getLore() { return List.of("This item is " + rarityToTest.getDisplayName()); }
+        @Override public ItemRarity getRarity() { return rarityToTest; }
+    }
+
 
     @BeforeEach
     void setUp() {
         testCustomItem = new TestCustomItem(mockPlugin);
         testCustomItemWithStats = new TestCustomItemWithStats(mockPlugin);
-        testCustomItemWithRarity = new TestCommonItem(mockPlugin); // For default rarity test
+        testCustomItemWithRarity = new TestCustomItemWithRarity(mockPlugin, ItemRarity.EPIC); // Changed to use the new stub
         lenient().when(mockPlugin.getName()).thenReturn("MMOCraftTestPlugin");
         nbtKey = new NamespacedKey(mockPlugin, CustomItem.CUSTOM_ITEM_ID_NBT_KEY);
     }

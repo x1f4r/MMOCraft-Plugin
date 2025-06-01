@@ -6,7 +6,7 @@ import com.x1f4r.mmocraft.util.LoggingUtil;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryView;
+import org.bukkit.inventory.InventoryView; // Corrected package
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
