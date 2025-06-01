@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance; // Added this line
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -175,14 +176,14 @@ public class BasicCustomSpawningService implements CustomSpawningService {
 
         // Apply base stats from MobStatProvider (Bukkit attributes)
         double baseHealth = mobStatProvider.getBaseHealth(definition.getEntityType()); // Using EntityType for base stats
-        AttributeInstance healthAttr = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        AttributeInstance healthAttr = livingEntity.getAttribute(Attribute.MAX_HEALTH);
         if (healthAttr != null) {
             healthAttr.setBaseValue(baseHealth);
             livingEntity.setHealth(baseHealth); // Set current health to max
         }
 
         double baseAttack = mobStatProvider.getBaseAttackDamage(definition.getEntityType());
-        AttributeInstance attackAttr = livingEntity.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
+        AttributeInstance attackAttr = livingEntity.getAttribute(Attribute.ATTACK_DAMAGE);
         if (attackAttr != null) {
             attackAttr.setBaseValue(baseAttack);
         }

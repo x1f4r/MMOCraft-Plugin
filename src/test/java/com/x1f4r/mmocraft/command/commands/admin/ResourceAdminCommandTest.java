@@ -1,6 +1,6 @@
 package com.x1f4r.mmocraft.command.commands.admin;
 
-import com.x1f4r.mmocraft.MMOCraftPlugin;
+import com.x1f4r.mmocraft.core.MMOCraftPlugin;
 import com.x1f4r.mmocraft.util.LoggingUtil;
 import com.x1f4r.mmocraft.world.resourcegathering.model.ActiveResourceNode;
 import com.x1f4r.mmocraft.world.resourcegathering.model.ResourceNodeType;

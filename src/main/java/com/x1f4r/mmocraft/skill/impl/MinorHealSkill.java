@@ -6,6 +6,7 @@ import com.x1f4r.mmocraft.playerdata.model.Stat;
 import com.x1f4r.mmocraft.skill.model.Skill;
 import com.x1f4r.mmocraft.skill.model.SkillType;
 import com.x1f4r.mmocraft.util.LoggingUtil;
+import org.bukkit.attribute.Attribute;
 import com.x1f4r.mmocraft.util.StringUtil;
 
 import org.bukkit.Bukkit;
@@ -67,7 +68,7 @@ public class MinorHealSkill extends Skill {
         long actualHeal = casterProfile.getCurrentHealth() - oldHealth;
 
         // Update Bukkit's health for the player
-        double newBukkitHealth = Math.min(casterPlayer.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue(), casterPlayer.getHealth() + actualHeal);
+        double newBukkitHealth = Math.min(casterPlayer.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue(), casterPlayer.getHealth() + actualHeal);
         casterPlayer.setHealth(newBukkitHealth);
 
         casterPlayer.sendMessage(StringUtil.colorize("&aYou cast " + getSkillName() + " and healed yourself for &f" + String.format("%.1f", (double)actualHeal) + "&a health."));
@@ -79,6 +80,6 @@ public class MinorHealSkill extends Skill {
 
 
         // Deduct mana
-        casterProfile.setCurrentMana(casterProfile.getCurrentMana() - this.getManaCost());
+        casterProfile.setCurrentMana(casterProfile.getCurrentMana() - (long) this.getManaCost());
     }
 }

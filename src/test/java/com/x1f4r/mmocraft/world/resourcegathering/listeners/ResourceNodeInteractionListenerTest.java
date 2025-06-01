@@ -1,6 +1,6 @@
 package com.x1f4r.mmocraft.world.resourcegathering.listeners;
 
-import com.x1f4r.mmocraft.MMOCraftPlugin;
+import com.x1f4r.mmocraft.core.MMOCraftPlugin;
 import com.x1f4r.mmocraft.item.service.CustomItemRegistry;
 import com.x1f4r.mmocraft.loot.model.LootTable;
 import com.x1f4r.mmocraft.loot.service.LootService;

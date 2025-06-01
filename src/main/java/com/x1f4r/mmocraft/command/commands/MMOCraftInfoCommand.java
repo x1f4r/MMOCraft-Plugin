@@ -30,10 +30,11 @@ public class MMOCraftInfoCommand extends AbstractPluginCommand {
                 return true;
             }
 
-            @Override
-            public List<String> onTabComplete(CommandSender sender, String[] args) {
-                return Collections.emptyList(); // No further arguments for "version"
-            }
+            // onTabComplete removed as CommandExecutable is now a functional interface for onCommand only
+            // @Override
+            // public List<String> onTabComplete(CommandSender sender, String[] args) {
+            //     return Collections.emptyList(); // No further arguments for "version"
+            // }
         });
 
         // Register another simple subcommand: /mmoc help
@@ -57,7 +58,7 @@ public class MMOCraftInfoCommand extends AbstractPluginCommand {
         return true;
     }
 
-    @Override
+    // No longer overriding an abstract method from AbstractPluginCommand as it's now concrete
     public List<String> onTabComplete(CommandSender sender, String[] args) {
         // This method is called by AbstractPluginCommand if no subcommand matches the first argument.
         // For the base /mmoc command, if we expect further arguments beyond subcommands,

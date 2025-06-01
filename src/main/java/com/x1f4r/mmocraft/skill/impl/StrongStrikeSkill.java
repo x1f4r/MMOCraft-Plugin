@@ -114,6 +114,6 @@ public class StrongStrikeSkill extends Skill {
         victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_GENERIC_HURT, 1.0f, 1.0f);
 
         // Deduct mana (after successful execution)
-        casterProfile.setCurrentMana(casterProfile.getCurrentMana() - this.getManaCost());
+        casterProfile.setCurrentMana(casterProfile.getCurrentMana() - (long) this.getManaCost());
     }
 }

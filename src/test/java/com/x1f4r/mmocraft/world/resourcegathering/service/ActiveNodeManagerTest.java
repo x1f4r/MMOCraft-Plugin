@@ -1,6 +1,6 @@
 package com.x1f4r.mmocraft.world.resourcegathering.service;
 
-import com.x1f4r.mmocraft.MMOCraftPlugin;
+import com.x1f4r.mmocraft.core.MMOCraftPlugin;
 import com.x1f4r.mmocraft.item.service.CustomItemRegistry;
 import com.x1f4r.mmocraft.loot.service.LootService;
 import com.x1f4r.mmocraft.util.LoggingUtil;

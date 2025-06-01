@@ -15,6 +15,7 @@ import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -52,8 +53,8 @@ public class PlayerCombatListener implements Listener {
         VANILLA_WEAPON_BASE_DAMAGE.put(Material.TRIDENT, 9.0); // Melee Trident damage
 
         // Mob default damages (examples, can be configured or fetched from mob attributes)
-        MOB_BASE_DAMAGE.put(org.bukkit.entity.EntityType.ZOMBIE, 3.0);
-        MOB_BASE_DAMAGE.put(org.bukkit.entity.EntityType.SKELETON, 2.5); // Arrow damage often separate
+        // MOB_BASE_DAMAGE.put(org.bukkit.entity.EntityType.ZOMBIE, 3.0); // Removed - Using MobStatProvider
+        // MOB_BASE_DAMAGE.put(org.bukkit.entity.EntityType.SKELETON, 2.5); // Removed - Using MobStatProvider
         // MOB_BASE_DAMAGE map is removed, MobStatProvider will be used instead.
     }
 

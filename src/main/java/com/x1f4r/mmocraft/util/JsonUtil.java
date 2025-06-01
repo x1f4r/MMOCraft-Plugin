@@ -62,7 +62,7 @@ public class JsonUtil {
                 Stat stat = Stat.valueOf(statName); // Can throw IllegalArgumentException if statName is invalid
                 double value = Double.parseDouble(statValueStr); // Can throw NumberFormatException
                 statsMap.put(stat, value);
-            } catch (IllegalArgumentException | NumberFormatException e) {
+            } catch (IllegalArgumentException e) { // Removed redundant NumberFormatException
                 // Log this error or handle it more gracefully in a real application
                 // For now, we'll skip malformed entries.
                 System.err.println("Error parsing stat entry in JSON: " + matcher.group(0) + " - " + e.getMessage());

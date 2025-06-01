@@ -1,6 +1,6 @@
 package com.x1f4r.mmocraft.world.zone.service;
 
-import com.x1f4r.mmocraft.MMOCraftPlugin;
+import com.x1f4r.mmocraft.core.MMOCraftPlugin;
 import com.x1f4r.mmocraft.util.LoggingUtil;
 import com.x1f4r.mmocraft.world.zone.model.Zone;
 import org.bukkit.Location;

@@ -12,10 +12,12 @@ import java.util.List;
 
 public class CustomCraftCommand extends AbstractPluginCommand {
 
+    private final MMOCraftPlugin plugin; // Added field
     private final CraftingUIManager craftingUIManager;
 
     public CustomCraftCommand(MMOCraftPlugin plugin) {
         super("customcraft", "mmocraft.command.customcraft", "Opens the custom crafting interface.");
+        this.plugin = plugin; // Initialize field
         this.craftingUIManager = plugin.getCraftingUIManager();
     }
 

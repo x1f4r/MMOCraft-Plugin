@@ -14,7 +14,7 @@ public class ActiveStatusEffect {
     private final StatusEffect statusEffect;
     private final UUID targetId; // UUID of the LivingEntity this effect is on
     private final long applicationTimeMillis;
-    private final long expirationTimeMillis; // System.currentTimeMillis() + duration. Long.MAX_VALUE if permanent.
+    private long expirationTimeMillis; // System.currentTimeMillis() + duration. Long.MAX_VALUE if permanent. // Made non-final
     private long nextTickTimeMillis;   // For effects with tickIntervalSeconds > 0
     private int stacks;                // For stackable effects, default 1.
 

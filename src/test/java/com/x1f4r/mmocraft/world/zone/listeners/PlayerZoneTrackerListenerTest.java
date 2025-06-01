@@ -1,6 +1,6 @@
 package com.x1f4r.mmocraft.world.zone.listeners;
 
-import com.x1f4r.mmocraft.MMOCraftPlugin;
+import com.x1f4r.mmocraft.core.MMOCraftPlugin;
 import com.x1f4r.mmocraft.eventbus.EventBusService;
 import com.x1f4r.mmocraft.util.LoggingUtil;
 import com.x1f4r.mmocraft.world.zone.event.PlayerEnterZoneEvent;

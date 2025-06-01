@@ -42,8 +42,10 @@ public class MMOCAdminRootCommand extends AbstractPluginCommand {
 
         // Check if the sender has permission for any registered subcommand to avoid "No admin modules available"
         // if they have permission for a dynamically registered one but not the hardcoded ones above.
-        boolean hasAtLeastOneSubCommandPermission = subCommands.keySet().stream()
-            .anyMatch(key -> sender.hasPermission(subCommands.get(key).getPermission()));
+        boolean hasAtLeastOneSubCommandPermission = subCommands.values().stream()
+            .filter(cmdExec -> cmdExec instanceof AbstractPluginCommand) // Ensure it's an AbstractPluginCommand
+            .map(cmdExec -> (AbstractPluginCommand) cmdExec)           // Cast to AbstractPluginCommand
+            .anyMatch(abstractCmd -> sender.hasPermission(abstractCmd.getPermission()));
 
         if (!hasAtLeastOneSubCommandPermission) {
              sender.sendMessage(StringUtil.colorize("&7No admin modules available to you or none registered."));

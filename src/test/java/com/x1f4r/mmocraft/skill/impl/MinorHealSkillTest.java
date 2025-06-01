@@ -81,7 +81,7 @@ class MinorHealSkillTest {
 
             // Mock Bukkit Player health methods
             when(mockCasterPlayer.getHealth()).thenReturn(10.0); // Bukkit health (scale 0-20 for 100HP usually)
-            when(mockCasterPlayer.getAttribute(Attribute.GENERIC_MAX_HEALTH)).thenReturn(mockMaxHealthAttribute);
+            when(mockCasterPlayer.getAttribute(Attribute.MAX_HEALTH)).thenReturn(mockMaxHealthAttribute);
             when(mockMaxHealthAttribute.getValue()).thenReturn(20.0); // Standard Bukkit max health
 
             minorHealSkill.execute(mockCasterProfile, null, null); // Target and location are null for self-heal
@@ -114,7 +114,7 @@ class MinorHealSkillTest {
             when(mockCasterProfile.getMaxHealth()).thenReturn(100L); // Only 10 HP room to heal
 
             when(mockCasterPlayer.getHealth()).thenReturn(18.0); // Assuming 20 max Bukkit HP
-            when(mockCasterPlayer.getAttribute(Attribute.GENERIC_MAX_HEALTH)).thenReturn(mockMaxHealthAttribute);
+            when(mockCasterPlayer.getAttribute(Attribute.MAX_HEALTH)).thenReturn(mockMaxHealthAttribute);
             when(mockMaxHealthAttribute.getValue()).thenReturn(20.0);
 
             minorHealSkill.execute(mockCasterProfile, null, null);

@@ -71,10 +71,11 @@ public abstract class AbstractPluginCommand implements CommandExecutor, TabCompl
         } else if (args.length > 1) {
             String subCommandName = args[0].toLowerCase();
             if (subCommands.containsKey(subCommandName)) {
-                CommandExecutable subExecutable = subCommands.get(subCommandName);
-                String[] subArgs = new String[args.length - 1];
-                System.arraycopy(args, 1, subArgs, 0, args.length - 1);
-                return subExecutable.onTabComplete(sender, subArgs);
+                // CommandExecutable subExecutable = subCommands.get(subCommandName); // subExecutable no longer has onTabComplete
+                // String[] subArgs = new String[args.length - 1];
+                // System.arraycopy(args, 1, subArgs, 0, args.length - 1);
+                // return subExecutable.onTabComplete(sender, subArgs); // This line is removed
+                return Collections.emptyList(); // No further specific tab-completion for sub-commands for now via CommandExecutable
             }
         }
         // If no subcommand, delegate to this command's specific tab completion for further args
@@ -85,8 +86,10 @@ public abstract class AbstractPluginCommand implements CommandExecutor, TabCompl
     @Override
     public abstract boolean onCommand(CommandSender sender, String[] args);
 
-    @Override
-    public abstract List<String> onTabComplete(CommandSender sender, String[] args);
+    // No longer overriding from CommandExecutable, provide a default implementation
+    public List<String> onTabComplete(CommandSender sender, String[] args) {
+        return Collections.emptyList(); // Default implementation
+    }
 
     public String getCommandName() {
         return commandName;

@@ -1,6 +1,6 @@
 package com.x1f4r.mmocraft.world.resourcegathering.listeners;
 
-import com.x1f4r.mmocraft.MMOCraftPlugin;
+import com.x1f4r.mmocraft.core.MMOCraftPlugin;
 import com.x1f4r.mmocraft.item.service.CustomItemRegistry; // For potential custom tool interactions
 import com.x1f4r.mmocraft.loot.service.LootService;
 import com.x1f4r.mmocraft.playerdata.PlayerDataService; // For player stats/skills affecting gathering
@@ -99,7 +99,7 @@ public class ResourceNodeInteractionListener implements Listener {
         lootService.getLootTableById(nodeType.getLootTableId()).ifPresentOrElse(lootTable -> {
             // Generate loot and give it to the player or drop it at the node's location.
             // For simplicity, let's drop at player's location for now.
-            lootTable.generateLoot().forEach(itemStack -> {
+            lootTable.generateLoot(customItemRegistry, plugin).forEach(itemStack -> { // Corrected
                 if (itemStack != null && itemStack.getAmount() > 0) {
                     player.getWorld().dropItemNaturally(player.getLocation(), itemStack);
                 }
